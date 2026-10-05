@@ -461,9 +461,9 @@ LPBYTE	lpScn = nes->ppu->GetScreenPtr();
 void	Mapper004::SetBank_CPU()
 {
 	if( reg[0] & 0x40 ) {
-		SetPROM_32K_Bank( PROM_8K_SIZE-2, prg1, prg0, PROM_8K_SIZE-1 );
+		SetPROM_32K_Bank( PRGBank(PROM_8K_SIZE-2), PRGBank(prg1), PRGBank(prg0), PRGBank(PROM_8K_SIZE-1) );
 	} else {
-		SetPROM_32K_Bank( prg0, prg1, PROM_8K_SIZE-2, PROM_8K_SIZE-1 );
+		SetPROM_32K_Bank( PRGBank(prg0), PRGBank(prg1), PRGBank(PROM_8K_SIZE-2), PRGBank(PROM_8K_SIZE-1) );
 	}
 }
 
@@ -481,8 +481,8 @@ void	Mapper004::SetBank_PPU()
 				SetBank_PPUSUB( 2, chr6 );
 				SetBank_PPUSUB( 3, chr7 );
 			} else {
-				SetVROM_8K_Bank( chr4, chr5, chr6, chr7,
-						 chr01, chr01+1, chr23, chr23+1 );
+				SetVROM_8K_Bank( CHRBank(chr4), CHRBank(chr5), CHRBank(chr6), CHRBank(chr7),
+						 CHRBank(chr01), CHRBank(chr01+1), CHRBank(chr23), CHRBank(chr23+1) );
 			}
 		} else {
 			if(rom_type == 2){
@@ -495,8 +495,8 @@ void	Mapper004::SetBank_PPU()
 				SetBank_PPUSUB( 6, chr6 );
 				SetBank_PPUSUB( 7, chr7 );
 			} else {
-				SetVROM_8K_Bank( chr01, chr01+1, chr23, chr23+1,
-						 chr4, chr5, chr6, chr7 );
+				SetVROM_8K_Bank( CHRBank(chr01), CHRBank(chr01+1), CHRBank(chr23), CHRBank(chr23+1),
+						 CHRBank(chr4), CHRBank(chr5), CHRBank(chr6), CHRBank(chr7) );
 			}
 		}
 	} else {

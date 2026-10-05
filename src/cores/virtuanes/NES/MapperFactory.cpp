@@ -113,7 +113,10 @@
 #include "Mapper188.h"
 #include "Mapper189.h"
 #include "Mapper206.h"
+#include "Mapper030.h"
+#include "Mapper037.h"
 #include "Mapper154.h"
+#include "Mapper158.h"
 #include "Mapper207.h"
 #include "Mapper210.h"
 #include "Mapper243.h"
@@ -318,7 +321,10 @@
 #include "Mapper187.cpp"
 #include "Mapper188.cpp"
 #include "Mapper189.cpp"
+#include "Mapper030.cpp"
+#include "Mapper037.cpp"
 #include "Mapper154.cpp"
+#include "Mapper158.cpp"
 #include "Mapper207.cpp"
 #include "Mapper210.cpp"
 #include "Mapper243.cpp"
@@ -558,6 +564,8 @@ Mapper*	CreateMapper( NES* parent, INT no, BOOL bUnif )
 				fceux_mapper028::StateRestore,
 				NULL,
 				fceux_mapper028::StateRegs);
+		case	30:
+			return new Mapper030(parent);
 		case	32:
 			return new Mapper032(parent);
 		case	33:
@@ -573,6 +581,8 @@ Mapper*	CreateMapper( NES* parent, INT no, BOOL bUnif )
 				fceux_mapper036::M36Restore,
 				NULL,
 				fceux_mapper036::StateRegs);
+		case	37:
+			return new Mapper037(parent);
 		case	40:
 			return new Mapper040(parent);
 		case	41:
@@ -746,6 +756,8 @@ Mapper*	CreateMapper( NES* parent, INT no, BOOL bUnif )
 			return new Mapper016(parent, no);
 		case	154:
 			return new Mapper154(parent);
+		case	158:
+			return new Mapper158(parent);
 		case	155:	// MMC1A: MMC1 without the WRAM disable bit, which
 				// Mapper001 doesn't emulate anyway
 			return new Mapper001(parent);

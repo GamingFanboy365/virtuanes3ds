@@ -43,8 +43,14 @@ protected:
 	BYTE	vs_patch;
 	BYTE	vs_index;
 
-private:
+	// MMC3-based boards with outer bank registers translate the MMC3's
+	// 8 KiB PRG and 1 KiB CHR bank numbers here.
+	virtual	INT	PRGBank( INT bank ) { return bank; }
+	virtual	INT	CHRBank( INT bank ) { return bank; }
+
 	void	SetBank_CPU();
 	void	SetBank_PPU();
+
+private:
 	void	SetBank_PPUSUB( int bank, int page );
 };

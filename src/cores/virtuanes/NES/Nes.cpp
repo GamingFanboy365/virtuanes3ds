@@ -1172,6 +1172,10 @@ void	NES::LoadSRAM()
 	if( !rom->IsSAVERAM() )
 		return NULL;
 
+	if( mapper ) {
+		mapper->LoadBattery( CPathlib::MakePathExt( rom->GetRomPath(), rom->GetRomName(), "flash" ).c_str() );
+	}
+
 	string	pathstr, tempstr;
 	/*if( Config.path.bSavePath ) {
 		pathstr = CPathlib::CreatePath( CApp::GetModulePath(), Config.path.szSavePath );
@@ -1244,6 +1248,10 @@ void	NES::SaveSRAM()
 
 	if( !rom->IsSAVERAM() )
 		return NULL;
+
+	if( mapper ) {
+		mapper->SaveBattery( CPathlib::MakePathExt( rom->GetRomPath(), rom->GetRomName(), "flash" ).c_str() );
+	}
 
 	for( i = 0; i < SAVERAM_SIZE; i++ ) {
 		if( WRAM[i] != 0x00 )

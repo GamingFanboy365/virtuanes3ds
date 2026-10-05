@@ -142,7 +142,7 @@
 	{0xa1dc16c0,	116,	   -1},
 	{0xe40dfb7e,	116,	   -1},	/* Somari (P conf.) */
 	{0xc9371ebb,	116,	   -1},	/* Somari (W conf.) */
-	{0xcbf4366f,	118,		8},	/* Alien Syndrome (U.S. unlicensed) */
+	{0xcbf4366f,	158,	   -1},	/* Alien Syndrome (U.S. unlicensed) */
 	{0x78b657ac,	118,	   -1},	/* Armadillo */
 	{0x90c773c1,	118,	   -1},	/* Goal! 2 */
 	{0xb9b4d9e0,	118,	   -1},	/* NES Play Action Football */

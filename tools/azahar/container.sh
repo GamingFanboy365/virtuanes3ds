@@ -137,6 +137,12 @@ for step in "$@"; do
             xdotool windowfocus "$WIN" keydown "$k" ;;
         up)
             xdotool keyup "$k" ;;
+        tap)
+            # Touch the screen at (arg, ms) in the 400x480 window; the
+            # bottom screen is at y 240-479, x 40-359.
+            xdotool mousemove --window "$WIN" "$arg" "$ms" mousedown 1
+            sleep 0.15
+            xdotool mouseup 1 ;;
         shot)
             shot "$arg" ;;
         *)

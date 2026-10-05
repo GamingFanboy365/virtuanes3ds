@@ -33,6 +33,8 @@ Steps run in order once the emulator window is up (headless mode only):
                       BUTTON: a b x y l r start select up down left right
   down:BUTTON         press a button and keep it held...
   up:BUTTON           ...until this step releases it
+  tap:X:Y             touch the screen at X,Y (the bottom screen is x 40-359,
+                      y 240-479)
   shot:NAME           save the screen to OUT/NAME.png (top screen above bottom)
 
 The Azahar log, including DEBUGOUT() output from a `make DEBUGOUT=1`
@@ -94,9 +96,10 @@ if [ "$GUI" = 0 ] || [ ! -f "$CONF" ]; then
 fi
 
 find "$SDMC" -maxdepth 1 -type f \( -iname '*.nes' -o -iname '*.fds' -o -iname '*.nsf' \) -delete
-# Headless runs also start without installed titles, so the ROM menu
-# only has the "Nintendo 3DS" folder (listed first) when running a .cia.
-[ "$GUI" = 1 ] || rm -rf "$SDMC/Nintendo 3DS"
+# Headless runs also start without installed titles or app data (/3ds),
+# so the ROM list is just the ROMs (plus the "Nintendo 3DS" folder,
+# listed first, when running a .cia, and whatever -s puts there).
+[ "$GUI" = 1 ] || rm -rf "$SDMC/Nintendo 3DS" "$SDMC/3ds"
 for rom in ${ROMS[@]+"${ROMS[@]}"}; do
     cp "$rom" "$SDMC/"
 done
