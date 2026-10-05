@@ -24,6 +24,7 @@
 #include "3dsfiles.h"
 #include "3dsinput.h"
 #include "3dslodepng.h"
+#include "3dspreview.h"
 #include "3dsmenu.h"
 #include "3dsmain.h"
 #include "3dsdbg.h"
@@ -275,9 +276,35 @@ bool emulatorSettingsSave(bool includeGlobalSettings, bool includeGameSettings, 
 
 
 //----------------------------------------------------------------------
+// Shows the highlighted ROM's previews on the top screen.
+//----------------------------------------------------------------------
+void menuShowPreview(int tabIndex, int itemID)
+{
+    // Tab 1 is "Select ROM". Folder names start with \x01.
+    if (tabIndex == 1 && itemID >= 0 && itemID < fileList.size() && fileList[itemID][0] != 1)
+        preview3dsShow(fileList[itemID].c_str());
+    else
+        preview3dsShow(NULL);
+}
+
+
+//----------------------------------------------------------------------
 // Start up menu.
 //----------------------------------------------------------------------
+void menuSelectFileWithoutPreviews(void);
+
 void menuSelectFile(void)
+{
+    preview3dsBegin();
+    menu3dsSetHighlightCallback(menuShowPreview);
+
+    menuSelectFileWithoutPreviews();
+
+    menu3dsSetHighlightCallback(NULL);
+    preview3dsEnd();
+}
+
+void menuSelectFileWithoutPreviews(void)
 {
     gfxSetDoubleBuffering(GFX_BOTTOM, true);
     

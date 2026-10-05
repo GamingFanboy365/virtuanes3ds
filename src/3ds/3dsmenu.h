@@ -157,6 +157,15 @@ void menu3dsHideDialog();
 bool menu3dsTakeScreenshot(const char *path);
 
 
+//-------------------------------------------------------
+// Sets a function that the menu calls once the user has
+// rested the highlight on an item (or tab) for a moment,
+// with the tab index and the item's ID (-1 for an empty
+// tab). Not called for dialogs. NULL removes it.
+//-------------------------------------------------------
+void menu3dsSetHighlightCallback(void (*callback)(int tabIndex, int itemID));
+
+
 
 #define MENU_MAKE_ACTION(ID, text) \
     { MENUITEM_ACTION, ID, text, NULL, 0 }

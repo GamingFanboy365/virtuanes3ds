@@ -111,6 +111,13 @@ extern char *impl3dsTitleImage;
 
 
 //---------------------------------------------------------
+// The folder with the preview images for the ROM menu:
+// boxart/<ROM name>.png and snaps/<ROM name>.png.
+//---------------------------------------------------------
+extern char *impl3dsPreviewDir;
+
+
+//---------------------------------------------------------
 // The title that displays at the bottom right of the
 // menu.
 //---------------------------------------------------------

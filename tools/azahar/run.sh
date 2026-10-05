@@ -16,6 +16,8 @@ Options:
                       is emptied of NES/FDS/NSF files first, so with a single ROM
                       "key:a" at the ROM menu loads it. (With a .cia, the
                       "Nintendo 3DS" folder comes first, so "key:down key:a".)
+  -s, --sd SRC:DEST   copy SRC to DEST on the emulated SD card (repeatable),
+                      e.g. -s art/Pinball.png:3ds/virtuanes_3ds/boxart/Pinball.png
   -a, --app FILE      .3dsx to run (default: virtuanes_3ds.3dsx), or a .cia,
                       which is installed and then launched like from the Home Menu
   -o, --out DIR       where screenshots and the log go (default: .azahar/out)
@@ -49,6 +51,7 @@ WORK="$ROOT/.azahar"
 APP="$ROOT/virtuanes_3ds.3dsx"
 OUT="$WORK/out"
 ROMS=()
+SD_FILES=()
 GDB_PORT=""
 GUI=0
 TIMEOUT=120
@@ -57,6 +60,7 @@ STEPS=()
 while [ $# -gt 0 ]; do
     case "$1" in
         -r|--rom)     ROMS+=("$2"); shift 2 ;;
+        -s|--sd)      SD_FILES+=("$2"); shift 2 ;;
         -a|--app)     APP="$2"; shift 2 ;;
         -o|--out)     OUT="$2"; shift 2 ;;
         -g|--gdb)
@@ -95,6 +99,10 @@ find "$SDMC" -maxdepth 1 -type f \( -iname '*.nes' -o -iname '*.fds' -o -iname '
 [ "$GUI" = 1 ] || rm -rf "$SDMC/Nintendo 3DS"
 for rom in ${ROMS[@]+"${ROMS[@]}"}; do
     cp "$rom" "$SDMC/"
+done
+for file in ${SD_FILES[@]+"${SD_FILES[@]}"}; do
+    mkdir -p "$SDMC/$(dirname "${file#*:}")"
+    cp "${file%%:*}" "$SDMC/${file#*:}"
 done
 case "$APP" in *.cia|*.CIA) EXT=cia ;; *) EXT=3dsx ;; esac
 rm -f "$WORK/app.3dsx" "$WORK/app.cia"
