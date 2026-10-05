@@ -33,6 +33,12 @@ While you browse the ROM list, the top screen can show box art and a screenshot 
 
 Images at those sizes load fastest and look best; larger ones are scaled down to fit. Games without either image show the title image instead.
 
+[tools/make_previews.py](tools/make_previews.py) makes these from bigger images, for example from a [libretro-thumbnails](https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System) pack. It needs Python 3 and Pillow (`pip install pillow`):
+
+    python3 tools/make_previews.py --boxarts Named_Boxarts --snaps Named_Snaps --roms path/to/your/roms --out previews
+
+Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on the SD card. With --roms, the images are named after your ROM files, and ROMs named differently from the pack's images (Tennis.nes against "Tennis (Japan, USA)") are matched by title.
+
 ### When in-game,
 
 1. Tap the bottom screen for the menu.
