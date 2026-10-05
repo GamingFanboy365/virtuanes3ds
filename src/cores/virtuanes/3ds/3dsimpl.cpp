@@ -327,6 +327,13 @@ char *impl3dsTitleImage = "./virtuanes_3ds_top.png";
 
 
 //---------------------------------------------------------
+// The folder with the preview images for the ROM menu:
+// boxart/<ROM name>.png and snaps/<ROM name>.png.
+//---------------------------------------------------------
+char *impl3dsPreviewDir = "/3ds/virtuanes_3ds";
+
+
+//---------------------------------------------------------
 // The title that displays at the bottom right of the
 // menu.
 //---------------------------------------------------------

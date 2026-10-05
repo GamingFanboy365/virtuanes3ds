@@ -585,6 +585,17 @@ SMenuTab *menu3dsAnimateTab(int direction)
 static u32 lastKeysHeld = 0xffffff;
 static u32 thisKeysHeld = 0;
 
+// Frames the highlight has to stay on an item before the highlight
+// callback is called, so that scrolling through a list stays fast.
+#define HIGHLIGHT_CALLBACK_DELAY   10
+
+static void (*highlightCallback)(int tabIndex, int itemID) = NULL;
+
+void menu3dsSetHighlightCallback(void (*callback)(int tabIndex, int itemID))
+{
+    highlightCallback = callback;
+}
+
 //-------------------------------------------------------
 // Displays the menu and allows the user to select from
 // a list of choices.
@@ -593,6 +604,9 @@ int menu3dsMenuSelectItem(bool (*itemChangedCallback)(int ID, int value))
 {
     int framesDKeyHeld = 0;
     int returnResult = -1;
+    int highlightTab = -1;
+    int highlightIndex = -1;
+    int framesHighlighted = 0;
 
     char menuTextBuffer[512];
 
@@ -617,6 +631,24 @@ int menu3dsMenuSelectItem(bool (*itemChangedCallback)(int ID, int value))
         {
             returnResult = -1;
             break;
+        }
+
+        if (highlightCallback && !isDialog)
+        {
+            SMenuTab *tab = &menuTab[currentMenuTab];
+            if (currentMenuTab != highlightTab || tab->SelectedItemIndex != highlightIndex)
+            {
+                highlightTab = currentMenuTab;
+                highlightIndex = tab->SelectedItemIndex;
+                framesHighlighted = 0;
+            }
+            if (++framesHighlighted == HIGHLIGHT_CALLBACK_DELAY)
+            {
+                int id = -1;
+                if (tab->SelectedItemIndex >= 0 && tab->SelectedItemIndex < tab->ItemCount)
+                    id = tab->MenuItems[tab->SelectedItemIndex].ID;
+                highlightCallback(currentMenuTab, id);
+            }
         }
 
         gpu3dsCheckSlider();

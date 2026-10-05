@@ -24,6 +24,15 @@ It also runs on your New 3DS as well!
 1. To load .FDS games, make sure that you get the FDS BIOS.
 2. Rename the BIOS to disksys.rom and place it in /3ds/virtuanes_3ds/bios/disksys.rom
 
+### Box art and screenshot previews
+
+While you browse the ROM list, the top screen can show box art and a screenshot of the highlighted game. Put them on your SD card as PNG files named like the ROM, without its extension:
+
+1. Box art: /3ds/virtuanes_3ds/boxart/Super Mario Bros. 3.png (shown at 150x200, on the left)
+2. Screenshot: /3ds/virtuanes_3ds/snaps/Super Mario Bros. 3.png (shown at 200x175, on the right)
+
+Images at those sizes load fastest and look best; larger ones are scaled down to fit. Games without either image show the title image instead.
+
 ### When in-game,
 
 1. Tap the bottom screen for the menu.
@@ -57,6 +66,7 @@ It also runs on your New 3DS as well!
 - Builds with current devkitARM (libctru 2.x) on Linux, macOS and Windows.
 - The top screen always runs in 2D mode (the 3D slider no longer changes it).
 - Runs in the Azahar and Citra emulators (without sound).
+- Box art and screenshot previews on the top screen in the ROM list (see above).
 - New mappers: 152, 153 (Famicom Jump II), 154 (Devil Man), 155 (MMC1A), 157 (Datach, without the barcode reader), 159 (Bandai 24C01 EEPROM games), 207 (Fudou Myouou Den) and 210 (Namco 175/340: Family Circuit '91, Splatterhouse Wanpaku Graffiti, Famista '92-'94 and others).
 - The CIA now has a title version (1.0.3), so it installs as an upgrade of older versions.
 
