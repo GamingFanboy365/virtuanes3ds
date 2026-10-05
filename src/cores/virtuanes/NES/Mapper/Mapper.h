@@ -86,6 +86,12 @@ public:
 
 	// For State save
 	virtual	BOOL	IsStateSave() { return FALSE; }
+
+	// For battery-backed data that isn't in WRAM, such as a PRG ROM the
+	// game reprograms itself. Called alongside loading and saving the
+	// .sav file, with the path of a <ROM name>.flash file next to it.
+	virtual	void	LoadBattery( LPCSTR path ) {}
+	virtual	void	SaveBattery( LPCSTR path ) {}
 	virtual	void	SaveState( LPBYTE p ) {}
 	virtual	void	LoadState( LPBYTE p ) {}
 

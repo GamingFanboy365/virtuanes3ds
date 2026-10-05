@@ -1,8 +1,8 @@
 # Mapper support
 
-VirtuaNES for 3DS reads the iNES 1.0 header, so it knows mapper numbers 0 to 255. Of those, `CreateMapper()` in `src/cores/virtuanes/NES/MapperFactory.cpp` handles 194, plus 20 UNIF boards and the NSF player. This page lists the other 62.
+VirtuaNES for 3DS reads the iNES 1.0 header, so it knows mapper numbers 0 to 255. Of those, `CreateMapper()` in `src/cores/virtuanes/NES/MapperFactory.cpp` handles 197, plus 20 UNIF boards and the NSF player. This page lists the other 59.
 
-Version 1.03 added mappers 152, 153, 154, 155, 157, 159, 207 and 210. Each has a generated test ROM in `tools/azahar/mappertest.py` that checks its bank switching and mirroring in the emulator (see the readme); that's also the quickest way to test a new mapper.
+Version 1.03 added mappers 30, 37, 152, 153, 154, 155, 157, 158, 159, 207 and 210. Each has a generated test ROM in `tools/azahar/mappertest.py` that checks its bank switching and mirroring in the emulator (see the readme); that's also the quickest way to test a new mapper.
 
 The makers come from the icons in the NESdev wiki's iNES 1.0 mapper grid (the September 2026 export of the [Mapper](https://www.nesdev.org/wiki/Mapper) page). The names are FCEUX's (`src/ines.cpp`) where it has one. Names marked † are from memory and should be checked against the mapper's NESdev page before implementing.
 
@@ -12,9 +12,7 @@ The makers come from the icons in the NESdev wiki's iNES 1.0 mapper grid (the Se
 |---:|---|---|---|
 | 14 | Supertone | REX SL-1632 | VRC2/MMC3 hybrid |
 | 29 | homebrew | RET-CUFROM | |
-| 30 | homebrew | UNROM 512 | Used by a lot of modern homebrew |
 | 31 | homebrew | INL NSF-style board | |
-| 37 | Nintendo | PAL-ZZ (Super Mario Bros./Tetris/Nintendo World Cup) | MMC3 multicart |
 | 38 | Bit Corp | Bit Corp. PCI556 | |
 | 53 | pirate | Supervision 16-in-1 | |
 | 54 | generic | (unnamed in FCEUX) | |
@@ -41,7 +39,6 @@ The makers come from the icons in the NESdev wiki's iNES 1.0 mapper grid (the Se
 | 145 | Sachen | SA-72007 | |
 | 147 | Sachen | TCU01 | |
 | 149 | Sachen | SA-0036 | |
-| 158 | Tengen | 800037 † | Alien Syndrome |
 | 175 | Kaiser | (unnamed in FCEUX) | |
 | 186 | generic | Fukutake Study Box | |
 | 196 | pirate | (unnamed in FCEUX) | MMC3 pirate † |
@@ -69,4 +66,4 @@ The NES 2.0 header format extends mapper numbers to 4095 and adds submappers. Th
 
 ## Where to start
 
-Mapper 30 (UNROM 512) matters most for current homebrew, and 29, 31 and 218 are small homebrew boards too. Among the rest, the MMC3 variants and multicarts (37, 205, 215, 219, 238, 250 and friends) mostly reuse mapper 4's logic with different register decoding or an outer bank register on top.
+29, 31 and 218 are small homebrew boards. Among the rest, the MMC3 variants and multicarts (205, 215, 219, 238, 250 and friends) mostly reuse mapper 4's logic with different register decoding or an outer bank register on top. `Mapper004` has `PRGBank()` and `CHRBank()` hooks for exactly that: mapper 37 (`Mapper037`) is the example, an outer bank register in about 20 lines.

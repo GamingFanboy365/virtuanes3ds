@@ -25,8 +25,9 @@ from smoketest import read_png  # noqa: E402
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 OUT = os.path.join(ROOT, '.azahar', 'mappertest')
 
-PASS_COLOUR = 0x2A  # green
-FAIL_COLOUR = 0x16  # red
+PASS_COLOUR = 0x2A    # green
+FAIL_COLOUR = 0x16    # red
+RESTORED_COLOUR = 0x21  # light blue: passed, with saved data from an earlier run
 
 
 class Asm:
@@ -114,12 +115,13 @@ class Asm:
         self.expect_a(value)
 
     def expect_mirroring(self, kind):
-        """kind: 'V', 'H' or '1' (one-screen)."""
+        """kind: 'V', 'H', '1' (one-screen) or '4' (four-screen)."""
         for i, nt in enumerate((0x2000, 0x2400, 0x2800, 0x2C00)):
             self.ppu_write(nt, 0x11 * (i + 1))
         expected = {'V': (0x33, 0x44, 0x33, 0x44),
                     'H': (0x22, 0x22, 0x44, 0x44),
-                    '1': (0x44, 0x44, 0x44, 0x44)}[kind]
+                    '1': (0x44, 0x44, 0x44, 0x44),
+                    '4': (0x11, 0x22, 0x33, 0x44)}[kind]
         for nt, value in zip((0x2000, 0x2400, 0x2800, 0x2C00), expected):
             self.expect_ppu(nt, value)
 
@@ -137,9 +139,12 @@ class Asm:
 
 
 def build_rom(mapper, prg_kib, chr_kib, test, battery=False,
-              code_banks=None):
+              code_banks=None, mirroring='H'):
     """Builds an iNES ROM running test(asm) from $E000. code_banks lists the
-    8 KiB PRG banks that hold the test code (default: the last one)."""
+    8 KiB PRG banks that hold the test code (default: the last one).
+    mirroring is the header's: 'H', 'V', '4' (four-screen bit) or '4V'
+    (both bits). A test can jump to 'restored' to pass in
+    RESTORED_COLOUR."""
     asm = Asm(0xE010)
     asm.label('reset')
     asm.op('sei')
@@ -156,6 +161,9 @@ def build_rom(mapper, prg_kib, chr_kib, test, battery=False,
     test(asm)
 
     asm.op('ldy', '#%d' % PASS_COLOUR)
+    asm.op('jmp', 'show')
+    asm.label('restored')
+    asm.op('ldy', '#%d' % RESTORED_COLOUR)
     asm.op('jmp', 'show')
     asm.label('fail')
     asm.op('stx', 0x0000)  # failing check number
@@ -198,6 +206,7 @@ def build_rom(mapper, prg_kib, chr_kib, test, battery=False,
         chr_ += data
 
     flags6 = ((mapper & 0x0F) << 4) | (0x02 if battery else 0)
+    flags6 |= {'H': 0, 'V': 0x01, '4': 0x08, '4V': 0x09}[mirroring]
     flags7 = mapper & 0xF0
     header = b'NES\x1a' + bytes([prg_kib // 16, chr_kib // 8, flags6, flags7]) + bytes(8)
     return header + bytes(prg) + bytes(chr_), asm.checks
@@ -347,43 +356,223 @@ def namco_210_test(n340):
     return test
 
 
-# (name, mapper, PRG KiB, CHR KiB, test, battery, banks holding the code)
+def unrom512_test(mirroring):
+    def test(asm):
+        # [MCCP PPPP]: one-screen select, 8 KiB CHR RAM bank, 16 KiB PRG bank.
+        asm.write(0xC000, 0x60 | 5)
+        asm.expect(0x8000, 10)
+        asm.expect(0xA000, 11)
+        asm.expect(0xC000, 62)
+        # Each of the four 8 KiB CHR RAM banks keeps its own data.
+        for bank in range(4):
+            asm.write(0xC000, bank << 5)
+            asm.ppu_write(0x0000, 0xA0 + bank)
+        for bank in range(4):
+            asm.write(0xC000, bank << 5)
+            asm.expect_ppu(0x0000, 0xA0 + bank)
+        if mirroring == '4':
+            asm.expect_one_screen_pages(lambda: asm.write(0xC000, 0x00),
+                                        lambda: asm.write(0xC000, 0x80))
+            asm.expect_mirroring('1')
+        elif mirroring == '4V':
+            asm.expect_mirroring('4')
+            # The four nametables are the last 8 KiB of CHR RAM.
+            asm.write(0xC000, 3 << 5)
+            asm.expect_ppu(0x0000, 0x11)
+            asm.expect_ppu(0x0C00, 0x44)
+        else:
+            asm.expect_mirroring(mirroring)
+    return test
+
+
+def test_30_flash(asm):
+    """Reprograms the flash PRG ROM. A second run of the same ROM finds the
+    programmed byte, if it was saved, and passes in RESTORED_COLOUR."""
+    def latch(value):
+        asm.write(0xC000, value)
+
+    def command(steps):
+        for bank, addr, value in steps:
+            latch(bank)
+            asm.write(addr, value)
+
+    # $5555 and $2AAA in the chip, with A14 coming from the latch.
+    unlock = [(1, 0x9555, 0xAA), (0, 0xAAAA, 0x55)]
+
+    command(unlock + [(1, 0x9555, 0x90)])  # software ID mode
+    asm.expect(0x8000, 0xBF)
+    asm.expect(0x8001, 0xB7)
+    asm.write(0x8000, 0xF0)  # back to reading the ROM
+    latch(2)
+    asm.expect(0x8000, 4)
+
+    latch(2)
+    asm.op('lda', 0x9010)
+    asm.op('cmp', '#%d' % 0x5A)
+    asm.op('bne', 'fresh')
+    asm.op('jmp', 'restored')
+    asm.label('fresh')
+
+    # Erase the 4 KiB sector at $9000 in bank 2, then program it.
+    command(unlock + [(1, 0x9555, 0x80)] + unlock + [(2, 0x9000, 0x30)])
+    latch(2)
+    asm.expect(0x9010, 0xFF)
+    asm.expect(0x9FFF, 0xFF)
+    asm.expect(0x8000, 4)  # the sector before it is untouched
+    command(unlock + [(1, 0x9555, 0xA0), (2, 0x9011, 0x0F)])
+    command(unlock + [(1, 0x9555, 0xA0), (2, 0x9011, 0xF3)])
+    latch(2)
+    asm.expect(0x9011, 0x03)  # programming only clears bits
+    command(unlock + [(1, 0x9555, 0xA0), (2, 0x9010, 0x5A)])
+    latch(2)
+    asm.expect(0x9010, 0x5A)
+    # Without the unlock sequence, writes don't program anything.
+    latch(2)
+    asm.write(0x9012, 0x00)
+    asm.expect(0x9012, 0xFF)
+
+
+def mmc3_write(asm, reg, value):
+    asm.write(0x8000, reg)
+    asm.write(0x8001, value)
+
+
+def test_37(asm):
+    # The outer bank register at $6000 takes writes while the MMC3's WRAM
+    # is enabled and writable.
+    asm.write(0xA001, 0x80)
+    mmc3_write(asm, 6, 2)
+    mmc3_write(asm, 2, 5)
+    # (outer, bank at $8000, fixed bank at $C000, 1 KiB CHR bank at $1000)
+    for outer, prg, fixed, chr_ in ((0, 2, 6, 5), (3, 10, 14, 5),
+                                    (4, 18, 30, 133), (7, 26, 30, 133)):
+        asm.write(0x6000, outer)
+        asm.expect(0x8000, prg)
+        asm.expect(0xC000, fixed)
+        asm.expect_ppu(0x1000, chr_)
+    for wram in (0x00, 0xC0):  # disabled, then write-protected
+        asm.write(0xA001, wram)
+        asm.write(0x6000, 0)
+        asm.expect(0x8000, 26)
+
+
+def test_158(asm):
+    def rambo(reg, value):
+        asm.write(0x8000, reg)
+        asm.write(0x8001, value)
+
+    rambo(6, 3)
+    asm.expect(0x8000, 3)
+    rambo(7, 4)
+    asm.expect(0xA000, 4)
+    rambo(15, 5)
+    asm.expect(0xC000, 5)
+    # Bit 7 of the CHR register mapped at PPU $0000+$400*i selects the
+    # nametable at $2000+$400*i.
+    rambo(0, 0x80 | 4)  # 2 KiB at $0000, nametable B for $2000/$2400
+    rambo(1, 0x00 | 6)  # 2 KiB at $0800, nametable A for $2800/$2C00
+    asm.expect_ppu(0x0000, 4)
+    asm.expect_ppu(0x0400, 5)
+    asm.expect_ppu(0x0800, 6)
+    asm.ppu_write(0x2000, 0xAA)
+    asm.ppu_write(0x2800, 0xBB)
+    asm.write(0xA000, 1)  # mapper 64's mirroring register must do nothing
+    asm.expect_ppu(0x2400, 0xAA)
+    asm.expect_ppu(0x2C00, 0xBB)
+    rambo(0, 0x00 | 4)
+    rambo(1, 0x80 | 6)
+    asm.expect_ppu(0x2000, 0xBB)
+    asm.expect_ppu(0x2800, 0xAA)
+    # With the CHR halves swapped, register 2 is at $0000.
+    rambo(0x82, 0x80 | 9)
+    asm.expect_ppu(0x0000, 9)
+    asm.expect_ppu(0x2000, 0xAA)
+    asm.expect_ppu(0x2400, 0xBB)
+
+
+STEPS = ['wait:10', 'key:a', 'wait:6', 'shot:result']
+# Touching the bottom screen opens the pause menu, which saves battery data.
+SAVE_STEPS = STEPS + ['tap:200:360', 'wait:3']
+
+
+class Case:
+    def __init__(self, name, mapper, prg_kib, chr_kib, test, battery=False,
+                 code_banks=None, mirroring='H', runs=None):
+        self.name = name
+        self.mapper = mapper
+        self.rom = (mapper, prg_kib, chr_kib, test, battery, code_banks, mirroring)
+        # Each run: (steps, expected result: 'pass' or 'restored').
+        self.runs = runs or [(STEPS, 'pass')]
+
+
 TESTS = [
-    ('152', 152, 128, 128, test_152, False, None),
-    ('153', 153, 512, 0, test_153, True, [31, 63]),
-    ('154', 154, 128, 128, test_154, False, None),
-    ('155', 155, 128, 128, test_155, False, None),
-    ('157', 157, 256, 0, lz93d50_test(False), False, None),
-    ('159', 159, 256, 128, lz93d50_test(True), False, None),
-    ('207', 207, 128, 128, test_207, False, None),
-    ('210-n340', 210, 128, 128, namco_210_test(True), False, None),
-    ('210-n175', 210, 128, 128, namco_210_test(False), True, None),
+    Case('30-h', 30, 512, 0, unrom512_test('H')),
+    Case('30-v', 30, 512, 0, unrom512_test('V'), mirroring='V'),
+    Case('30-1scr', 30, 512, 0, unrom512_test('4'), mirroring='4'),
+    Case('30-4scr', 30, 512, 0, unrom512_test('4V'), mirroring='4V'),
+    Case('30-flash', 30, 512, 0, test_30_flash, battery=True, mirroring='V',
+         runs=[(SAVE_STEPS, 'pass'), (STEPS, 'restored')]),
+    Case('37', 37, 256, 256, test_37, code_banks=[7, 15, 31]),
+    Case('152', 152, 128, 128, test_152),
+    Case('153', 153, 512, 0, test_153, battery=True, code_banks=[31, 63]),
+    Case('154', 154, 128, 128, test_154),
+    Case('155', 155, 128, 128, test_155),
+    Case('157', 157, 256, 0, lz93d50_test(False)),
+    Case('158', 158, 128, 128, test_158),
+    Case('159', 159, 256, 128, lz93d50_test(True)),
+    Case('207', 207, 128, 128, test_207),
+    Case('210-n340', 210, 128, 128, namco_210_test(True)),
+    Case('210-n175', 210, 128, 128, namco_210_test(False), battery=True),
 ]
+
+SDMC = os.path.join(ROOT, '.azahar', 'headless', '.local', 'share', 'azahar-emu', 'sdmc')
+
+
+def result_colour(path):
+    r, g, b = read_png(path)[120][200 * 3:200 * 3 + 3]
+    if r > 150 and g < 150:
+        kind = 'fail'
+    elif b > 150 and r < 150:
+        kind = 'restored'
+    elif g > 150 and r < 150 and b < 150:
+        kind = 'pass'
+    else:
+        kind = 'unknown'
+    return kind, (r, g, b)
 
 
 def main():
     wanted = sys.argv[1:]
     results = []
     with tempfile.TemporaryDirectory() as tmp:
-        for name, mapper, prg, chr_, test, battery, code_banks in TESTS:
-            if wanted and name not in wanted and str(mapper) not in wanted:
+        for case in TESTS:
+            if wanted and case.name not in wanted and str(case.mapper) not in wanted:
                 continue
-            rom, checks = build_rom(mapper, prg, chr_, test, battery, code_banks)
-            path = os.path.join(tmp, 'mapper%s.nes' % name)
+            rom, checks = build_rom(*case.rom)
+            rom_name = 'mapper%s' % case.name
+            path = os.path.join(tmp, rom_name + '.nes')
             with open(path, 'wb') as f:
                 f.write(rom)
-            out = os.path.join(OUT, name)
-            os.makedirs(out, exist_ok=True)
-            subprocess.run([
-                os.path.join(ROOT, 'tools', 'azahar', 'run.sh'),
-                '-r', path, '-o', out, '-t', '120', '--',
-                'wait:10', 'key:a', 'wait:6', 'shot:result',
-            ], check=True, stdout=subprocess.DEVNULL)
-            rows = read_png(os.path.join(out, 'result.png'))
-            r, g, b = rows[120][200 * 3:200 * 3 + 3]
-            ok = g > 150 and r < 150
-            print('mapper %-9s %s (%d checks, rgb(%d, %d, %d))' % (
-                name, 'PASS' if ok else 'FAIL', checks, r, g, b))
+            # Start without battery data from earlier test runs.
+            for ext in ('.sav', '.flash'):
+                stale = os.path.join(SDMC, rom_name + ext)
+                if os.path.exists(stale):
+                    os.remove(stale)
+            ok = True
+            seen = []
+            for run, (steps, expected) in enumerate(case.runs):
+                out = os.path.join(OUT, case.name if len(case.runs) == 1
+                                   else '%s-run%d' % (case.name, run + 1))
+                os.makedirs(out, exist_ok=True)
+                subprocess.run([
+                    os.path.join(ROOT, 'tools', 'azahar', 'run.sh'),
+                    '-r', path, '-o', out, '-t', '120', '--'] + steps,
+                    check=True, stdout=subprocess.DEVNULL)
+                kind, rgb = result_colour(os.path.join(out, 'result.png'))
+                seen.append('%s rgb%s' % (kind, rgb))
+                ok = ok and kind == expected
+            print('mapper %-9s %s (%d checks; %s)' % (
+                case.name, 'PASS' if ok else 'FAIL', checks, ', '.join(seen)))
             results.append(ok)
     print('%d/%d passed; screenshots in %s' % (sum(results), len(results), OUT))
     return 0 if results and all(results) else 1
