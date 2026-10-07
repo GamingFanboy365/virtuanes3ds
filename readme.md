@@ -6,6 +6,8 @@ This 3DS version also fixes a few bugs from VirtuaNES's MMC5 mappers and even pl
 
 This is a fork of bubble2k16's [emus3ds](https://github.com/bubble2k16/emus3ds), narrowed down to the VirtuaNES core. See [readme-virtuanes.md](readme-virtuanes.md) for installation, usage and the change history.
 
+While you browse the ROM list, the top screen can show box art and a screenshot of the highlighted game. NES boxes, landscape Famicom covers and square Famicom Disk System covers all fit; [readme-virtuanes.md](readme-virtuanes.md#box-art-and-screenshot-previews) explains where the images go and how `tools/make_previews.py` resizes them.
+
 ![alt tag](https://github.com/bubble2k16/emus3ds/blob/master/screenshots/VirtuaNES%20-%20Gradius%20II.bmp)
 
 ![alt tag](https://github.com/bubble2k16/emus3ds/blob/master/screenshots/VirtuaNES%20-%20Kirby's%20Adventure.bmp)
