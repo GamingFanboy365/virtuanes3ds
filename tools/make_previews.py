@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 #
 # Makes the box art and screenshot previews for VirtuaNES's ROM list at the
-# sizes the 3DS shows them: box art fits inside 150x200, screenshots are
-# 200x175. Images that size load fastest on the 3DS and look better than
-# ones the 3DS scales itself.
+# sizes the 3DS shows them: box art fits inside 176x200 (150x200 for an NES
+# box, 176x132 for a landscape Famicom cover, 176x176 for a square Famicom
+# Disk System cover), screenshots are 200x175. Images that size load fastest
+# on the 3DS and look better than ones the 3DS scales itself.
 #
 # Takes folders of images, for example the Named_Boxarts and Named_Snaps (or
 # Named_Titles) folders of a libretro-thumbnails pack
-# (https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System),
+# (https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System,
+# or Nintendo_-_Family_Computer_Disk_System for FDS games),
 # and writes OUT/boxart and OUT/snaps. Copy those two folders to
 # /3ds/virtuanes_3ds/ on the SD card.
 #
@@ -31,7 +33,7 @@ try:
 except ImportError:
     sys.exit('This needs Pillow: pip install pillow')
 
-BOXART_SIZE = (150, 200)
+BOXART_SIZE = (176, 200)
 SNAP_SIZE = (200, 175)
 ROM_EXTENSIONS = ('.nes', '.fds', '.unf', '.unif', '.nsf')
 IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp')
