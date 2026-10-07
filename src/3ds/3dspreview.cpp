@@ -11,12 +11,14 @@
 #define SCREEN_WIDTH    400
 #define SCREEN_HEIGHT   240
 
-#define BOXART_X        16
+// The box art slot is wide enough for landscape Famicom
+// covers; NES boxes (150x200) are limited by its height.
+#define BOXART_X        8
 #define BOXART_Y        20
-#define BOXART_WIDTH    150
+#define BOXART_WIDTH    176
 #define BOXART_HEIGHT   200
 
-#define SNAP_X          184
+#define SNAP_X          192
 #define SNAP_Y          32
 #define SNAP_WIDTH      200
 #define SNAP_HEIGHT     175
@@ -152,8 +154,15 @@ void preview3dsShow(const char *romFileName)
     if (found)
     {
         memset(fb, 0, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
-        previewDraw(fb, &boxart, BOXART_X, BOXART_Y, BOXART_WIDTH, BOXART_HEIGHT);
-        previewDraw(fb, &snap, SNAP_X, SNAP_Y, SNAP_WIDTH, SNAP_HEIGHT);
+        if (boxart.pixels && snap.pixels)
+        {
+            previewDraw(fb, &boxart, BOXART_X, BOXART_Y, BOXART_WIDTH, BOXART_HEIGHT);
+            previewDraw(fb, &snap, SNAP_X, SNAP_Y, SNAP_WIDTH, SNAP_HEIGHT);
+        }
+        else if (boxart.pixels)
+            previewDraw(fb, &boxart, (SCREEN_WIDTH - BOXART_WIDTH) / 2, BOXART_Y, BOXART_WIDTH, BOXART_HEIGHT);
+        else
+            previewDraw(fb, &snap, (SCREEN_WIDTH - SNAP_WIDTH) / 2, SNAP_Y, SNAP_WIDTH, SNAP_HEIGHT);
     }
     else if (titleImage.pixels)
     {

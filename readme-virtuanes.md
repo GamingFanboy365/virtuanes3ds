@@ -28,12 +28,12 @@ It also runs on your New 3DS as well!
 
 While you browse the ROM list, the top screen can show box art and a screenshot of the highlighted game. Put them on your SD card as PNG files named like the ROM, without its extension:
 
-1. Box art: /3ds/virtuanes_3ds/boxart/Super Mario Bros. 3.png (shown at 150x200, on the left)
+1. Box art: /3ds/virtuanes_3ds/boxart/Super Mario Bros. 3.png (shown on the left, up to 176x200: 150x200 for an NES box, 176x132 for a Famicom cover, 176x176 for a Famicom Disk System cover)
 2. Screenshot: /3ds/virtuanes_3ds/snaps/Super Mario Bros. 3.png (shown at 200x175, on the right)
 
-Images at those sizes load fastest and look best; larger ones are scaled down to fit. Games without either image show the title image instead.
+Images at those sizes load fastest and look best; larger ones are scaled down to fit. A game with only one of the two images shows it in the middle of the screen, and games without either image show the title image instead.
 
-[tools/make_previews.py](tools/make_previews.py) makes these from bigger images, for example from a [libretro-thumbnails](https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System) pack. It needs Python 3 and Pillow (`pip install pillow`):
+[tools/make_previews.py](tools/make_previews.py) makes these from bigger images, for example from a libretro-thumbnails pack ([NES](https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System), [Famicom Disk System](https://github.com/libretro-thumbnails/Nintendo_-_Family_Computer_Disk_System)). It needs Python 3 and Pillow (`pip install pillow`):
 
     python3 tools/make_previews.py --boxarts Named_Boxarts --snaps Named_Snaps --roms path/to/your/roms --out previews
 
