@@ -54,16 +54,55 @@ To test a new mapper, add a test function and a `TESTS` entry to `tools/azahar/m
 
 ## Mappers still to do
 
-VirtuaNES handles 197 of the 256 iNES 1.0 mapper numbers. These 45 have known hardware and still need implementing; [docs/mappers.md](docs/mappers.md) has the board name and notes for each.
+VirtuaNES handles 197 of the 256 iNES 1.0 mapper numbers. These 45 have known hardware and still need implementing. The examples come from each mapper's page on the [NESdev wiki](https://www.nesdev.org/wiki/Mapper), and [docs/mappers.md](docs/mappers.md) has the board names and notes.
 
-| Kind | Mappers |
-|---|---|
-| MMC3 variants and MMC3 multicarts | 123, 126, 196, 197, 205, 208, 215, 217, 219, 238, 250 |
-| Sachen | 136, 137, 138, 139, 143, 145, 147, 149 |
-| Other multicarts | 53, 59, 63, 203, 204, 214, 221 |
-| Pirate conversions of FDS and other games | 55, 56, 103, 106, 125 |
-| Homebrew | 29, 31, 218 |
-| Others | 14, 38, 54, 81, 104, 124, 127, 128, 144, 175, 186 |
+| Mapper | Kind | Example games |
+|---:|---|---|
+| 14 | Other | Samurai Spirits (Rex Soft pirate) |
+| 29 | Homebrew | Glider |
+| 31 | Homebrew | NSF-style music compilations: 2A03 Puritans, RNDM |
+| 38 | Other | Crime Busters |
+| 53 | Multicart | Supervision 16-in-1 |
+| 54 | Multicart | Novel Diamond 9999999-in-1 |
+| 55 | Pirate conversion | Fly Merio Bros., Super Mario Bros. Malee 2 |
+| 56 | Pirate conversion | Super Mario Bros. 3 (pirate reproduction) |
+| 59 | Multicart | None named (BMC-T3H53 and BMC-D1038 boards) |
+| 63 | Multicart | Powerful 250-in-1, Hello Kitty 255-in-1 |
+| 81 | Other | Super Gun (NTDEC) |
+| 103 | Pirate conversion | Doki Doki Panic (FDS conversion) |
+| 104 | Other | Pegasus 5-in-1: Big Nose Freaks Out, Micro Machines, Fantastic Adventures of Dizzy |
+| 106 | Pirate conversion | Super Mario Bros. 3 (bootleg) |
+| 123 | MMC3 variant | Mortal Kombat 3, Earthworm Jim 2 (pirate) |
+| 124 | Other | Super Game Mega Type III (pirate arcade board) |
+| 125 | Pirate conversion | Monty no Doki Doki Daisassou (FDS conversion) |
+| 126 | MMC3 multicart | Power Joy Classic TV Game 84-in-1, Gamezone 118-in-1 |
+| 127 | Other | Double Dragon II (pirate) |
+| 128 | Other | T-262 multicarts |
+| 136 | Sachen | 四川麻將 (Sichuan Mahjong), 未来小子 |
+| 137 | Sachen | The Great Wall |
+| 138 | Sachen | None named |
+| 139 | Sachen | None named |
+| 143 | Sachen | Dancing Blocks, Magical Mathematics |
+| 144 | Other | Death Race |
+| 145 | Sachen | Sidewinder |
+| 147 | Sachen | Challenge of the Dragon |
+| 149 | Sachen | Taiwan Mahjong 16 |
+| 175 | Other | Kaiser 15-in-1 |
+| 186 | Other | Fukutake Study Box (BIOS) |
+| 196 | MMC3 variant | MRCM's Mario-themed hacks |
+| 197 | MMC3 variant | Super Fighter III, Mortal Kombat III Special |
+| 203 | Multicart | 35-in-1 |
+| 204 | Multicart | 64-in-1, 80-in-1 |
+| 205 | MMC3 multicart | 15-in-1, 3-in-1 |
+| 208 | MMC3 variant | Street Fighter IV (pirate) |
+| 214 | Multicart | Super Gun 20-in-1 |
+| 215 | MMC3 variant | Mortal Kombat 3, Earthworm Jim 2, Pocahontas Part 2 (pirate) |
+| 217 | MMC3 multicart | 500-in-1, 2000-in-1 |
+| 218 | Homebrew | Magic Floor, Starfight |
+| 219 | MMC3 variant | Toy Story, Super 1997 4-in-1 |
+| 221 | Multicart | None named (NTDEC N625092 boards) |
+| 238 | MMC3 variant | Contra Fighter |
+| 250 | MMC3 variant | Time Diver Avenger, Queen Bee V |
 
 The other 14 unhandled numbers (39, 84, 98, 102, 129, 130, 131, 146, 161, 213, 223, 224, 239 and 247) are bad or unused assignments, and a ROM using one is best fixed with the right number in its header.
 
