@@ -51,3 +51,24 @@ tools/azahar/gdb.sh
 Mappers live in `src/cores/virtuanes/NES/Mapper`, one class per mapper (`MapperNNN.h` and `MapperNNN.cpp`) deriving from `Mapper`. They are compiled as part of `src/cores/virtuanes/NES/MapperFactory.cpp`, which `#include`s every mapper header and source file, and whose `CreateMapper()` maps iNES mapper numbers (and UNIF board names) to the classes. So a new mapper needs its two files plus the two `#include`s and a `case` in `CreateMapper()`. The existing mappers such as `Mapper003` (CNROM) are the best reference for the bank switching helpers (`SetPROM_8K_Bank()`, `SetVROM_1K_Bank()` and friends).
 
 To test a new mapper, add a test function and a `TESTS` entry to `tools/azahar/mappertest.py`. [docs/mappers.md](docs/mappers.md) lists the iNES mappers that VirtuaNES doesn't support yet, and which ones are the easiest to add.
+
+## Mappers still to do
+
+VirtuaNES handles 197 of the 256 iNES 1.0 mapper numbers. These 45 have known hardware and still need implementing; [docs/mappers.md](docs/mappers.md) has the board name and notes for each.
+
+| Kind | Mappers |
+|---|---|
+| MMC3 variants and MMC3 multicarts | 123, 126, 196, 197, 205, 208, 215, 217, 219, 238, 250 |
+| Sachen | 136, 137, 138, 139, 143, 145, 147, 149 |
+| Other multicarts | 53, 59, 63, 203, 204, 214, 221 |
+| Pirate conversions of FDS and other games | 55, 56, 103, 106, 125 |
+| Homebrew | 29, 31, 218 |
+| Others | 14, 38, 54, 81, 104, 124, 127, 128, 144, 175, 186 |
+
+The other 14 unhandled numbers (39, 84, 98, 102, 129, 130, 131, 146, 161, 213, 223, 224, 239 and 247) are bad or unused assignments, and a ROM using one is best fixed with the right number in its header.
+
+Mappers above 255 come from the NES 2.0 header format, which VirtuaNES doesn't read yet. Supporting that header comes before any of them.
+
+### VT03, VT09 and other VRT famiclones
+
+Many plug-and-play consoles and handhelds run on V.R. Technology's NES-compatible chips (VT02, VT03, VT09, VT32, VT369 and others), usually as "OneBus" ROMs under NES 2.0 mapper 256 and its relatives. They're further off than the mappers above: besides the NES 2.0 header, the newer chips add graphics modes with more colours per tile, and some add their own sound hardware, so they need changes to VirtuaNES's PPU and APU as well as a mapper. They aren't planned yet.
