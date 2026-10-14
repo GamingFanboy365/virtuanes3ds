@@ -39,6 +39,16 @@ void setExitFlag(APT_HookType hook, void* param)
     }
 }
 
+bool app3dsMainLoop()
+{
+    if (!aptMainLoop() && !appExiting)
+    {
+        TRACE3DS_LOG("system asked to close");
+        appExiting = 1;
+    }
+    return !appExiting;
+}
+
 void enableExitHook() {
     aptHook(&hookCookie, setExitFlag, NULL);
 }

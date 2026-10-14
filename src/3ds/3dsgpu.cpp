@@ -974,7 +974,9 @@ void gpu3dsWaitForPreviousFlush()
 {
     if (somethingWasFlushed)
     {
-        if (emulator.isReal3DS)   // Don't bother waiting in the Citra emulator (it can freeze sometimes!)
+        // Don't bother waiting in the Citra emulator (it can freeze sometimes!),
+        // or without the GPU (the system took it to close us): it never returns.
+        if (emulator.isReal3DS && gspHasGpuRight())
         {
             TRACE3DS_DETAIL("wait for GPU");
             gspWaitForP3D();
