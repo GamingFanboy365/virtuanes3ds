@@ -32,6 +32,7 @@ typedef struct
 
 
 extern SSND3DS snd3DS;
+extern volatile int snd3dsMixCount;     // sound blocks mixed so far, for tracing
 
 //---------------------------------------------------------
 // Computes the truncated number of samples per loop by

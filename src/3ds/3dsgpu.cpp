@@ -11,6 +11,7 @@
 
 #include "3dstypes.h"
 #include "3dsgpu.h"
+#include "3dstrace.h"
 #include "3dsfiles.h"
 #include "3dsmain.h"
 #include "3dsemu.h"
@@ -958,6 +959,7 @@ void gpu3dsFlush()
 
     GPUCMD_GetBuffer(NULL, NULL, &offset);
 
+    TRACE3DS_DETAIL("flush GPU: %lu words", offset);
     GPUCMD_Finalize();
     GPUCMD_FlushAndRun();
 
@@ -973,7 +975,11 @@ void gpu3dsWaitForPreviousFlush()
     if (somethingWasFlushed)
     {
         if (emulator.isReal3DS)   // Don't bother waiting in the Citra emulator (it can freeze sometimes!)
+        {
+            TRACE3DS_DETAIL("wait for GPU");
             gspWaitForP3D();
+            TRACE3DS_DETAIL("GPU done");
+        }
         somethingWasFlushed = false;
     }
 

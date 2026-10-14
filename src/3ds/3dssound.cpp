@@ -11,12 +11,14 @@
 #include "3dsasync.h"
 
 #include "3dsinterface.h"
+#include "3dstrace.h"
 
 #define LEFT_CHANNEL        10
 #define RIGHT_CHANNEL       11
 
 
 SSND3DS snd3DS;
+volatile int snd3dsMixCount = 0;
 
 int debugSoundCounter = 0;
 
@@ -197,7 +199,10 @@ void snd3dsMixingThread(void *p)
             svcSleepThread(100000 * 1);
 
         if (snd3DS.isPlaying)
+        {
             snd3dsMixSamples();
+            snd3dsMixCount++;
+        }
     }
     snd3DS.terminateMixingThread = -1;
     svcExitThread();
@@ -286,7 +291,9 @@ void snd3dsStartPlaying()
         }
 
         // Flush CSND command buffers
-        csndExecCmds(true);
+        TRACE3DS_LOG("csndExecCmds");
+        Result execRet = csndExecCmds(true);
+        TRACE3DS_LOG("csndExecCmds: %08lx", execRet);
         snd3DS.startTick = svcGetSystemTick();
 
         // Fix for race condition for 64-bit access in the sound thread.
@@ -354,6 +361,7 @@ bool snd3dsInitialize()
 
     Result ret = 0;
     ret = csndInit();
+    TRACE3DS_LOG("csndInit: %08lx", ret);
 
 #ifndef EMU_RELEASE
     printf ("Trying to initialize CSND, ret = %x\n", ret);
@@ -400,7 +408,8 @@ bool snd3dsInitialize()
         APT_SetAppCpuTimeLimit(30); // enables syscore usage
         aptCloseSession();   
 #else
-        APT_SetAppCpuTimeLimit(30); // enables syscore usage
+        ret = APT_SetAppCpuTimeLimit(30); // enables syscore usage
+        TRACE3DS_LOG("APT_SetAppCpuTimeLimit: %08lx", ret);
 #endif
 
         snd3DS.mixingThreadHandle = NULL;
@@ -413,6 +422,7 @@ bool snd3dsInitialize()
     #endif
             ret = svcCreateThread(&snd3DS.mixingThreadHandle, snd3dsMixingThread, 0,
                 (u32*)(snd3DS.mixingThreadStack+0x4000), 0x18, 1);
+            TRACE3DS_LOG("mixing thread: %08lx", ret);
             if (ret)
             {
                 printf("Unable to start Mix thread: %x\n", ret);
