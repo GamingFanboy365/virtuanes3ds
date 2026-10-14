@@ -12,6 +12,11 @@
 #ifdef TRACE3DS
 void trace3ds(const char *format, ...);
 extern int trace3dsDetail;      // nonzero: also log the per-frame steps
+extern volatile int trace3dsProgress;   // bumped by the main thread every frame
+
+// Starts a low-priority thread that logs the app's state every 2 seconds
+// while it's in the background or closing, to show where it stops.
+void trace3dsStartWatchdog();
 #define TRACE3DS_LOG(...)       trace3ds(__VA_ARGS__)
 #define TRACE3DS_DETAIL(...)    do { if (trace3dsDetail) trace3ds(__VA_ARGS__); } while (0)
 #else

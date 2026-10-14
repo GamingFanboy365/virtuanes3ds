@@ -207,7 +207,6 @@ void snd3dsMixingThread(void *p)
             svcSleepThread(1000000);    // 1 ms; nothing to mix outside a game
     }
     snd3DS.terminateMixingThread = -1;
-    svcExitThread();
 }
 
 
@@ -416,26 +415,21 @@ bool snd3dsInitialize()
         TRACE3DS_LOG("APT_SetAppCpuTimeLimit: %08lx", ret);
 #endif
 
-        snd3DS.mixingThreadHandle = NULL;
+        snd3DS.mixingThread = NULL;
         
         if (snd3dsSpawnMixingThread)
         {
-    #ifndef EMU_RELEASE
-            printf ("snd3dsInit - Mix Stack: %x\n", snd3DS.mixingThreadStack);
-            printf ("snd3dsInit - Mix ThreadFunc: %x\n", &snd3dsMixingThread);
-    #endif
-            ret = svcCreateThread(&snd3DS.mixingThreadHandle, snd3dsMixingThread, 0,
-                (u32*)(snd3DS.mixingThreadStack+0x4000), 0x18, 1);
-            TRACE3DS_LOG("mixing thread: %08lx", ret);
-            if (ret)
+            // On the system core (1). libctru's threadCreate, not
+            // svcCreateThread: libctru stops the program if a raw thread
+            // touches newlib state such as errno.
+            snd3DS.mixingThread = threadCreate(snd3dsMixingThread, NULL, 0x4000, 0x18, 1, false);
+            TRACE3DS_LOG("mixing thread: %s", snd3DS.mixingThread ? "started" : "failed");
+            if (!snd3DS.mixingThread)
             {
-                printf("Unable to start Mix thread: %x\n", ret);
+                printf("Unable to start Mix thread\n");
                 snd3dsFinalize();
                 return false;
             }
-#ifndef EMU_RELEASE
-            printf ("snd3dsInit - Create Mix thread %x\n", snd3DS.mixingThreadHandle);
-#endif
         }
     }
 
@@ -458,15 +452,14 @@ void snd3dsFinalize()
 
      snd3DS.terminateMixingThread = true;
 
-     if (snd3DS.mixingThreadHandle)
+     if (snd3DS.mixingThread)
      {
-         // Wait (at most 1 second) for the sound thread to finish,
-#ifndef EMU_RELEASE
-         printf ("Join mixingThreadHandle\n");
-#endif
-         Result waitRet = svcWaitSynchronization(snd3DS.mixingThreadHandle, 1000 * 1000000);
+         // Wait (at most 1 second) for the sound thread to finish.
+         Result waitRet = threadJoin(snd3DS.mixingThread, 1000 * 1000000ULL);
          TRACE3DS_LOG("mixing thread stopped: %08lx", waitRet);
-         svcCloseHandle(snd3DS.mixingThreadHandle);
+         if (R_SUCCEEDED(waitRet))
+             threadFree(snd3DS.mixingThread);
+         snd3DS.mixingThread = NULL;
      }
 
     if (snd3DS.audioType == 1)

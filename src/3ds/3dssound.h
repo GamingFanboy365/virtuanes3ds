@@ -19,8 +19,7 @@ typedef struct
     s64         bufferPosition;
     s64         samplePosition;
 
-    Handle      mixingThreadHandle;
-    u8          mixingThreadStack[0x4000] __attribute__((aligned(8)));
+    Thread      mixingThread;       // created with threadCreate, so it has libctru's thread-local state
     volatile bool terminateMixingThread;
 
     s64         startSamplePosition = 0;

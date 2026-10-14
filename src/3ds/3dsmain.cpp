@@ -761,6 +761,9 @@ void emulatorInitialize()
     }
 
     TRACE3DS_LOG("sound initialized: audioType=%d", snd3DS.audioType);
+#ifdef TRACE3DS
+    trace3dsStartWatchdog();
+#endif
     ui3dsInitialize();
 
     /*if (romfsInit()!=0)
@@ -810,30 +813,12 @@ void emulatorFinalize()
 #endif
     TRACE3DS_LOG("finalize: GPU");
     gpu3dsFinalize();
-    TRACE3DS_LOG("finalize: services");
 
-#ifndef EMU_RELEASE
-    printf("ptmSysmExit:\n");
-#endif
-    ptmSysmExit ();
-
-    //printf("romfsExit:\n");
-    //romfsExit();
-    
-#ifndef EMU_RELEASE
-    printf("hidExit:\n");
-#endif
-	hidExit();
-    
-#ifndef EMU_RELEASE
-    printf("aptExit:\n");
-#endif
-	aptExit();
-    
-#ifndef EMU_RELEASE
-    printf("srvExit:\n");
-#endif
-	srvExit();
+    // No hidExit/aptExit/srvExit here: libctru's exit() calls them in the
+    // right order. aptExit() hands the app's closing to the system, and the
+    // final step runs at the very end of exit() and needs srv still open;
+    // calling them here as well (as libctru 1.x needed) made the system
+    // report an error and restart.
     TRACE3DS_LOG("finalize: done");
 }
 
@@ -952,6 +937,7 @@ void emulatorLoop()
             break;
 
 #ifdef TRACE3DS
+        trace3dsProgress++;
         trace3dsDetail = traceFrame < 5;
         if (traceFrame < 5 || traceFrame % 60 == 0)
             TRACE3DS_LOG("frame %d: mixed %d sound blocks", traceFrame, snd3dsMixCount);
@@ -1106,5 +1092,6 @@ quit:
     printf("emulatorFinalize:\n");
     emulatorFinalize();
     printf ("Exiting...\n");
+    TRACE3DS_LOG("exit");
 	exit(0);
 }

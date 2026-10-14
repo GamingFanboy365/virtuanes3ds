@@ -27,9 +27,10 @@ void setExitFlag(APT_HookType hook, void* param)
             snd3dsStopPlaying();
             break;
 
+        // The system also wakes the app this way to close it: no sound then.
         case APTHOOK_ONRESTORE:
         case APTHOOK_ONWAKEUP:
-            if (emulator.emulatorState == EMUSTATE_EMULATE && !appExiting)
+            if (emulator.emulatorState == EMUSTATE_EMULATE && !appExiting && !aptShouldClose())
                 snd3dsStartPlaying();
             break;
 
