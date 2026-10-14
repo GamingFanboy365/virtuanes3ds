@@ -255,6 +255,7 @@ Result snd3dsPlaySound(int chn, u32 flags, u32 sampleRate, float vol, float pan,
 		CSND_SetBlock(chn, 1, paddr1, size);
 	}
     CSND_SetPlayState(chn, 1);
+    return 0;
 }
 
 

@@ -25,6 +25,7 @@ bool config3dsOpenFile(const char *filename, bool fileWriteMode)
         else
             return false;
     }
+    return false;   // another file is still open
 }
 
 
