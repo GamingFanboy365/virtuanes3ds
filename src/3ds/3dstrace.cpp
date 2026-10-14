@@ -18,13 +18,16 @@ void trace3ds(const char *format, ...)
     if (traceLines >= TRACE_MAX_LINES)
         return;
 
-    FILE *fp = fopen(TRACE_FILE, traceLines == 0 ? "w" : "a");
+    FILE *fp = fopen(TRACE_FILE, "a");
     if (!fp)
         return;
 
     u64 tick = svcGetSystemTick();
     if (traceLines == 0)
+    {
         traceStartTick = tick;
+        fputs("=== VirtuaNES started ===\n", fp);
+    }
     fprintf(fp, "%8.3f ", (double)(tick - traceStartTick) / SYSCLOCK_ARM11);
 
     va_list args;

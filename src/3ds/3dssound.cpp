@@ -203,6 +203,8 @@ void snd3dsMixingThread(void *p)
             snd3dsMixSamples();
             snd3dsMixCount++;
         }
+        else
+            svcSleepThread(1000000);    // 1 ms; nothing to mix outside a game
     }
     snd3DS.terminateMixingThread = -1;
     svcExitThread();
@@ -450,6 +452,10 @@ bool snd3dsInitialize()
 //---------------------------------------------------------
 void snd3dsFinalize()
 {
+     // Silence the 3DS first: it keeps looping the buffer until told to stop.
+     if (snd3DS.audioType == 1)
+         snd3dsStopPlaying();
+
      snd3DS.terminateMixingThread = true;
 
      if (snd3DS.mixingThreadHandle)
@@ -458,20 +464,24 @@ void snd3dsFinalize()
 #ifndef EMU_RELEASE
          printf ("Join mixingThreadHandle\n");
 #endif
-         svcWaitSynchronization(snd3DS.mixingThreadHandle, 1000 * 1000000);
+         Result waitRet = svcWaitSynchronization(snd3DS.mixingThreadHandle, 1000 * 1000000);
+         TRACE3DS_LOG("mixing thread stopped: %08lx", waitRet);
          svcCloseHandle(snd3DS.mixingThreadHandle);
      }
 
-    if (snd3DS.fullBuffers)  linearFree(snd3DS.fullBuffers);
-
     if (snd3DS.audioType == 1)
     {
-        snd3dsStopPlaying();
+        TRACE3DS_LOG("csndExit");
         csndExit();
+        TRACE3DS_LOG("csndExit done");
     }
     else if(snd3DS.audioType == 2)
     {
         ndspChnWaveBufClear(0);
         ndspExit();
     }
+
+    // Only now that nothing plays from or mixes into them.
+    if (snd3DS.fullBuffers)  linearFree(snd3DS.fullBuffers);
+    snd3DS.fullBuffers = NULL;
 }
