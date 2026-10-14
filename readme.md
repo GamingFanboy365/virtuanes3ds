@@ -22,6 +22,8 @@ Publishing a GitHub release builds and tests its tag in CI, then attaches the `.
 
 `make DEBUGOUT=1` turns on the `DEBUGOUT()` traces that are sprinkled through the VirtuaNES core and mappers (ROM header details at load time, unhandled mapper writes and so on). They go to `svcOutputDebugString`, which shows up in the emulator's log. The flag isn't tracked by the build, so run `make clean` when switching it on or off.
 
+`make TRACE=1` is for debugging on real hardware, where there's no emulator log. The app appends a step-by-step log of start-up, ROM loading, sound start, the first frames, HOME menu events and shutdown to `virtuanes_trace.txt` at the root of the SD card, saving after every line so the log survives a freeze. A watchdog thread also logs the app's state every 2 seconds while it's in the background or closing. Like `DEBUGOUT`, run `make clean` when switching it.
+
 ## Running and debugging in Azahar
 
 The [Azahar](https://azahar-emu.org/) 3DS emulator (the successor of Citra and Lime3DS) runs the `.3dsx` directly, which is the quickest way to try a change. If you have it installed, open `virtuanes_3ds.3dsx` from it, and put your ROMs on its emulated SD card, the `sdmc` folder in Azahar's user directory. Under an emulator VirtuaNES runs without sound, because Azahar doesn't implement the CSND sound service it uses.

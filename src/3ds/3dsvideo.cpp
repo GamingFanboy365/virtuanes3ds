@@ -130,7 +130,7 @@ SGPUTexture *video3dsGetCurrentScreenTexture()
 //-----------------------------------------------------------------------------
 // Clear the software buffers.
 //-----------------------------------------------------------------------------
-void *video3dsClearAllSoftwareBuffers()
+void video3dsClearAllSoftwareBuffers()
 {
     memset(videoSoftwareBuffer[0], 0, videoBufferWidth * videoBufferHeight * videoSoftwareBufferBitDepth / 8);    
     memset(videoSoftwareBuffer[1], 0, videoBufferWidth * videoBufferHeight * videoSoftwareBufferBitDepth / 8);    

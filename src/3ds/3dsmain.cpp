@@ -27,6 +27,7 @@
 #include "3dspreview.h"
 #include "3dsmenu.h"
 #include "3dsmain.h"
+#include "3dstrace.h"
 #include "3dsdbg.h"
 
 #include "3dsinterface.h"
@@ -112,14 +113,17 @@ bool emulatorLoadRom()
 
     char romFileNameFullPath2[_MAX_PATH];
     strncpy(romFileNameFullPath2, romFileNameFullPath, _MAX_PATH - 1);
+    TRACE3DS_LOG("load ROM: %s", romFileNameFullPath2);
 
     // Load up the new ROM settings first.
     //
     emulatorSettingsLoad(false, true, false);
     impl3dsApplyAllSettings();
     
+    TRACE3DS_LOG("settings loaded");
     if (!impl3dsLoadROM(romFileNameFullPath2))
     {
+        TRACE3DS_LOG("impl3dsLoadROM failed");
         // If the ROM loading fails:
         // 1. Restore the original ROM file path.
         strncpy(romFileNameFullPath, romFileNameFullPathOriginal, _MAX_PATH - 1);
@@ -134,8 +138,10 @@ bool emulatorLoadRom()
     }
     impl3dsApplyAllSettings();
 
+    TRACE3DS_LOG("ROM loaded; auto savestate=%d", settings3DS.AutoSavestate);
     if (settings3DS.AutoSavestate)
         impl3dsLoadState(0);
+    TRACE3DS_LOG("emulatorLoadRom done");
 
     emulator.emulatorState = EMUSTATE_EMULATE;
 
@@ -464,6 +470,10 @@ void menuPause()
         int selection = menu3dsShowMenu(menuSelectedChanged, animateMenu);
         animateMenu = false;
 
+        // The menu also returns -1 when the app is closing: don't resume then.
+        if (appExiting)
+            break;
+
         if (selection == -1 || selection == 1000)
         {
             // Cancels the menu and resumes game
@@ -739,18 +749,25 @@ void emulatorInitialize()
 
     printf ("Initializing...\n");
 
+    TRACE3DS_LOG("start: isReal3DS=%d", emulator.isReal3DS);
     if (!impl3dsInitializeCore())
     {
         printf ("Unable to initialize emulator core\n");
         exit(0);
     }
 
+    TRACE3DS_LOG("core initialized");
     if (!snd3dsInitialize())
     {
+        TRACE3DS_LOG("snd3dsInitialize failed");
         printf ("Unable to initialize CSND\n");
         exit (0);
     }
 
+    TRACE3DS_LOG("sound initialized: audioType=%d", snd3DS.audioType);
+#ifdef TRACE3DS
+    trace3dsStartWatchdog();
+#endif
     ui3dsInitialize();
 
     /*if (romfsInit()!=0)
@@ -780,47 +797,38 @@ void emulatorFinalize()
 {
     consoleClear();
 
+    // Sound first: the mixing thread generates samples from the core.
+    TRACE3DS_LOG("finalize: sound");
+    snd3dsFinalize();
+
+    TRACE3DS_LOG("finalize: core");
     impl3dsFinalize();
+    TRACE3DS_LOG("finalize: wait for GPU");
 
 #ifndef EMU_RELEASE
     printf("gspWaitForP3D:\n");
 #endif
-    gspWaitForVBlank();
-    gpu3dsWaitForPreviousFlush();
-    gspWaitForVBlank();
-
-#ifndef EMU_RELEASE
-    printf("snd3dsFinalize:\n");
-#endif
-    snd3dsFinalize();
+    // Not when the system has taken the GPU to close us (closing from the
+    // HOME menu): the waits would never return.
+    if (gspHasGpuRight())
+    {
+        gspWaitForVBlank();
+        gpu3dsWaitForPreviousFlush();
+        gspWaitForVBlank();
+    }
 
 #ifndef EMU_RELEASE
     printf("gpu3dsFinalize:\n");
 #endif
+    TRACE3DS_LOG("finalize: GPU");
     gpu3dsFinalize();
 
-#ifndef EMU_RELEASE
-    printf("ptmSysmExit:\n");
-#endif
-    ptmSysmExit ();
-
-    //printf("romfsExit:\n");
-    //romfsExit();
-    
-#ifndef EMU_RELEASE
-    printf("hidExit:\n");
-#endif
-	hidExit();
-    
-#ifndef EMU_RELEASE
-    printf("aptExit:\n");
-#endif
-	aptExit();
-    
-#ifndef EMU_RELEASE
-    printf("srvExit:\n");
-#endif
-	srvExit();
+    // No hidExit/aptExit/srvExit here: libctru's exit() calls them in the
+    // right order. aptExit() hands the app's closing to the system, and the
+    // final step runs at the very end of exit() and needs srv still open;
+    // calling them here as well (as libctru 1.x needed) made the system
+    // report an error and restart.
+    TRACE3DS_LOG("finalize: done");
 }
 
 
@@ -919,18 +927,34 @@ void emulatorLoop()
         ui3dsDrawStringWithNoWrapping(0, 100, 320, 115, 0x7f7f7f, HALIGN_CENTER, "Touch screen for menu");
     }
 
+    TRACE3DS_LOG("starting sound");
     snd3dsStartPlaying();
+    TRACE3DS_LOG("sound started: isPlaying=%d", snd3DS.isPlaying);
 
     impl3dsEmulationBegin();
+    TRACE3DS_LOG("emulation begun");
+#ifdef TRACE3DS
+    int traceFrame = 0;
+#endif
 
 	while (true)
 	{
         startFrameTick = svcGetSystemTick();
-        aptMainLoop();
+        app3dsMainLoop();
 
         if (appExiting)
             break;
 
+#ifdef TRACE3DS
+        trace3dsProgress++;
+        trace3dsDetail = traceFrame < 5;
+        if (traceFrame < 5 || traceFrame % 60 == 0)
+            TRACE3DS_LOG("frame %d: mixed %d sound blocks", traceFrame, snd3dsMixCount);
+        if (traceFrame == 600)
+            TRACE3DS_LOG("frame 600 reached, stopping per-frame log");
+        if (traceFrame <= 600)
+            traceFrame++;
+#endif
         gpu3dsStartNewFrame();
         gpu3dsCheckSlider();
         updateFrameCount();
@@ -939,7 +963,9 @@ void emulatorLoop()
         if (emulator.emulatorState != EMUSTATE_EMULATE)
             break;
 
+        TRACE3DS_DETAIL("run frame");
         impl3dsEmulationRunOneFrame(firstFrame, skipDrawingFrame);
+        TRACE3DS_DETAIL("frame done");
 
         firstFrame = false; 
 
@@ -1020,7 +1046,9 @@ void emulatorLoop()
 
 	}
 
+    TRACE3DS_LOG("leaving emulation: state=%d, appExiting=%d", emulator.emulatorState, appExiting);
     snd3dsStopPlaying();
+    TRACE3DS_LOG("sound stopped");
 
     // Wait for the sound thread to leave the snd3dsMixSamples entirely
     // to prevent a race condition between the PTMU_GetBatteryChargeState (when
@@ -1065,11 +1093,14 @@ int main()
     }
 
 quit:
+    TRACE3DS_LOG("quit: appExiting=%d, state=%d", appExiting, emulator.emulatorState);
+    // Auto-save on exit, as when switching games (this used to load instead).
     if (emulator.emulatorState > 0 && settings3DS.AutoSavestate)
-        impl3dsLoadState(0);
+        impl3dsSaveState(0);
 
     printf("emulatorFinalize:\n");
     emulatorFinalize();
     printf ("Exiting...\n");
+    TRACE3DS_LOG("exit");
 	exit(0);
 }

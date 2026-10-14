@@ -26,7 +26,7 @@ SGPUTexture *video3dsGetCurrentScreenTexture();
 //-----------------------------------------------------------------------------
 // Clear the software buffers.
 //-----------------------------------------------------------------------------
-void *video3dsClearAllSoftwareBuffers();
+void video3dsClearAllSoftwareBuffers();
 
 //-----------------------------------------------------------------------------
 // Get the previous software screen buffers.

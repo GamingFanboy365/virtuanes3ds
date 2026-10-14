@@ -3740,7 +3740,7 @@ bool	NES::GenieAdd( bool enabled, char *buf )
 	BYTE 		codetmp[9];
 
 	if( ::strlen( buf ) < 6 )
-		return;
+		return false;
 
 	code.enabled = enabled;
 	code.address = 0;

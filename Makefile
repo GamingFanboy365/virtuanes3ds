@@ -59,9 +59,18 @@ INCLUDES	:=	include \
 
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
-CFLAGS	:=	-g -w -O3 -mword-relocations -finline-limit=20000 \
+CFLAGS	:=	-g -O3 -mword-relocations -finline-limit=20000 \
 			-fno-rtti -fomit-frame-pointer -ffunction-sections -fpermissive \
 			$(ARCH)
+
+# The legacy code sets off thousands of these harmless warnings, so they're
+# off. A function that can end without returning its value is an error: GCC
+# compiles it into code that runs on into whatever comes next, which once
+# hung every game at start-up on real hardware (snd3dsPlaySound).
+CFLAGS	+=	-Werror=return-type -Wno-write-strings -Wno-multichar \
+			-Wno-shift-overflow -Wno-narrowing -Wno-non-c-typedef-for-linkage \
+			-Wno-cpp -Wno-stringop-overflow -Wno-conversion-null \
+			-Wno-aggressive-loop-optimizations
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DHAVE_ASPRINTF -DUSE_FILE32API \
 			-DVERSION_STRING=\"$(VERSION_MAJOR).$(VERSION_MINOR)$(VERSION_MICRO)\"
@@ -70,6 +79,13 @@ CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DHAVE_ASPRINTF -DUSE_FILE32API \
 # which emulators such as Azahar print to their log.
 ifeq ($(DEBUGOUT),1)
 CFLAGS	+=	-D_DEBUGOUT
+endif
+
+# make TRACE=1 writes a log of start-up, ROM loading and the first frames to
+# sdmc:/virtuanes_trace.txt, for debugging on real hardware (see 3dstrace.h).
+# Like DEBUGOUT, the build doesn't track it: run make clean when switching.
+ifeq ($(TRACE),1)
+CFLAGS	+=	-DTRACE3DS
 endif
 
 CXXFLAGS	:= $(CFLAGS)  -fno-exceptions -std=gnu++11

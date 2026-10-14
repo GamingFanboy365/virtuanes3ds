@@ -7,7 +7,9 @@
 
 typedef struct 
 {
-    bool        isPlaying = false;
+    // Shared with the mixing thread, so volatile: without it GCC reads them
+    // once and the thread spins forever on the stale value.
+    volatile bool isPlaying = false;
     
     int         audioType = 0;              // 0 - no audio, 1 - CSND, 2 - DSP
     short       *fullBuffers;
@@ -17,9 +19,8 @@ typedef struct
     s64         bufferPosition;
     s64         samplePosition;
 
-    Handle      mixingThreadHandle;
-    u8          mixingThreadStack[0x4000] __attribute__((aligned(8)));
-    bool        terminateMixingThread;
+    Thread      mixingThread;       // created with threadCreate, so it has libctru's thread-local state
+    volatile bool terminateMixingThread;
 
     s64         startSamplePosition = 0;
     s64         upToSamplePosition = 0;
@@ -32,6 +33,7 @@ typedef struct
 
 
 extern SSND3DS snd3DS;
+extern volatile int snd3dsMixCount;     // sound blocks mixed so far, for tracing
 
 //---------------------------------------------------------
 // Computes the truncated number of samples per loop by

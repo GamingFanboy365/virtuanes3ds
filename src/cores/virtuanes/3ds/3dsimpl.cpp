@@ -15,6 +15,7 @@
 #include "3dsexit.h"
 #include "3dsgpu.h"
 #include "3dssound.h"
+#include "3dstrace.h"
 #include "3dsui.h"
 #include "3dsinput.h"
 #include "3dsfiles.h"
@@ -489,7 +490,9 @@ bool impl3dsLoadROM(char *romFilePath)
         nes = NULL;
     }
 
+	TRACE3DS_LOG("new NES");
 	nes = new NES(romFilePath);
+	TRACE3DS_LOG("new NES: error=%s, mapper %d", nes->error ? nes->error : "none", nes->error ? -1 : nes->rom->GetMapperNo());
 	if (nes->error)
 		return false;
 
@@ -524,7 +527,9 @@ bool impl3dsLoadROM(char *romFilePath)
 	Config.sound.nVolume[0] = 200;
     Config.graphics.bAllSprite = 0;
 
+	TRACE3DS_LOG("reset");
 	nes->Reset();
+	TRACE3DS_LOG("reset done");
 
     // If this is a FDS game, enable the FDS menu.
     //

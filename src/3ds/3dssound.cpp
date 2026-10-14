@@ -11,12 +11,14 @@
 #include "3dsasync.h"
 
 #include "3dsinterface.h"
+#include "3dstrace.h"
 
 #define LEFT_CHANNEL        10
 #define RIGHT_CHANNEL       11
 
 
 SSND3DS snd3DS;
+volatile int snd3dsMixCount = 0;
 
 int debugSoundCounter = 0;
 
@@ -197,10 +199,14 @@ void snd3dsMixingThread(void *p)
             svcSleepThread(100000 * 1);
 
         if (snd3DS.isPlaying)
+        {
             snd3dsMixSamples();
+            snd3dsMixCount++;
+        }
+        else
+            svcSleepThread(1000000);    // 1 ms; nothing to mix outside a game
     }
     snd3DS.terminateMixingThread = -1;
-    svcExitThread();
 }
 
 
@@ -250,6 +256,7 @@ Result snd3dsPlaySound(int chn, u32 flags, u32 sampleRate, float vol, float pan,
 		CSND_SetBlock(chn, 1, paddr1, size);
 	}
     CSND_SetPlayState(chn, 1);
+    return 0;
 }
 
 
@@ -286,11 +293,14 @@ void snd3dsStartPlaying()
         }
 
         // Flush CSND command buffers
-        csndExecCmds(true);
+        TRACE3DS_LOG("csndExecCmds");
+        Result execRet = csndExecCmds(true);
+        TRACE3DS_LOG("csndExecCmds: %08lx", execRet);
         snd3DS.startTick = svcGetSystemTick();
 
         // Fix for race condition for 64-bit access in the sound thread.
         snd3DS.upToSamplePosition = snd3dsGetSamplePosition();  
+        __sync_synchronize();   // the mixing thread on the other core must see these first
         snd3DS.isPlaying = true;
     }
 }
@@ -354,6 +364,7 @@ bool snd3dsInitialize()
 
     Result ret = 0;
     ret = csndInit();
+    TRACE3DS_LOG("csndInit: %08lx", ret);
 
 #ifndef EMU_RELEASE
     printf ("Trying to initialize CSND, ret = %x\n", ret);
@@ -400,28 +411,25 @@ bool snd3dsInitialize()
         APT_SetAppCpuTimeLimit(30); // enables syscore usage
         aptCloseSession();   
 #else
-        APT_SetAppCpuTimeLimit(30); // enables syscore usage
+        ret = APT_SetAppCpuTimeLimit(30); // enables syscore usage
+        TRACE3DS_LOG("APT_SetAppCpuTimeLimit: %08lx", ret);
 #endif
 
-        snd3DS.mixingThreadHandle = NULL;
+        snd3DS.mixingThread = NULL;
         
         if (snd3dsSpawnMixingThread)
         {
-    #ifndef EMU_RELEASE
-            printf ("snd3dsInit - Mix Stack: %x\n", snd3DS.mixingThreadStack);
-            printf ("snd3dsInit - Mix ThreadFunc: %x\n", &snd3dsMixingThread);
-    #endif
-            ret = svcCreateThread(&snd3DS.mixingThreadHandle, snd3dsMixingThread, 0,
-                (u32*)(snd3DS.mixingThreadStack+0x4000), 0x18, 1);
-            if (ret)
+            // On the system core (1). libctru's threadCreate, not
+            // svcCreateThread: libctru stops the program if a raw thread
+            // touches newlib state such as errno.
+            snd3DS.mixingThread = threadCreate(snd3dsMixingThread, NULL, 0x4000, 0x18, 1, false);
+            TRACE3DS_LOG("mixing thread: %s", snd3DS.mixingThread ? "started" : "failed");
+            if (!snd3DS.mixingThread)
             {
-                printf("Unable to start Mix thread: %x\n", ret);
+                printf("Unable to start Mix thread\n");
                 snd3dsFinalize();
                 return false;
             }
-#ifndef EMU_RELEASE
-            printf ("snd3dsInit - Create Mix thread %x\n", snd3DS.mixingThreadHandle);
-#endif
         }
     }
 
@@ -438,28 +446,35 @@ bool snd3dsInitialize()
 //---------------------------------------------------------
 void snd3dsFinalize()
 {
+     // Silence the 3DS first: it keeps looping the buffer until told to stop.
+     if (snd3DS.audioType == 1)
+         snd3dsStopPlaying();
+
      snd3DS.terminateMixingThread = true;
 
-     if (snd3DS.mixingThreadHandle)
+     if (snd3DS.mixingThread)
      {
-         // Wait (at most 1 second) for the sound thread to finish,
-#ifndef EMU_RELEASE
-         printf ("Join mixingThreadHandle\n");
-#endif
-         svcWaitSynchronization(snd3DS.mixingThreadHandle, 1000 * 1000000);
-         svcCloseHandle(snd3DS.mixingThreadHandle);
+         // Wait (at most 1 second) for the sound thread to finish.
+         Result waitRet = threadJoin(snd3DS.mixingThread, 1000 * 1000000ULL);
+         TRACE3DS_LOG("mixing thread stopped: %08lx", waitRet);
+         if (R_SUCCEEDED(waitRet))
+             threadFree(snd3DS.mixingThread);
+         snd3DS.mixingThread = NULL;
      }
-
-    if (snd3DS.fullBuffers)  linearFree(snd3DS.fullBuffers);
 
     if (snd3DS.audioType == 1)
     {
-        snd3dsStopPlaying();
+        TRACE3DS_LOG("csndExit");
         csndExit();
+        TRACE3DS_LOG("csndExit done");
     }
     else if(snd3DS.audioType == 2)
     {
         ndspChnWaveBufClear(0);
         ndspExit();
     }
+
+    // Only now that nothing plays from or mixes into them.
+    if (snd3DS.fullBuffers)  linearFree(snd3DS.fullBuffers);
+    snd3DS.fullBuffers = NULL;
 }

@@ -93,6 +93,11 @@ void menu3dsDrawBlackScreen(float opacity)
 //-------------------------------------------------------
 void menu3dsSwapBuffersAndWaitForVBlank()
 {
+    // Without the GPU (the system took it to close the app), the transfer
+    // and the waits would never complete.
+    if (!gspHasGpuRight())
+        return;
+
     if (transferGameScreenCount)
     {
         gpu3dsTransferToScreenBuffer();
@@ -540,7 +545,7 @@ SMenuTab *menu3dsAnimateTab(int direction)
     {
         for (int i = 1; i <= ANIMATE_TAB_STEPS; i++)
         {
-            aptMainLoop();
+            app3dsMainLoop();
             menu3dsDrawEverything(0, i, 0);
             menu3dsSwapBuffersAndWaitForVBlank();
         }
@@ -552,7 +557,7 @@ SMenuTab *menu3dsAnimateTab(int direction)
         
         for (int i = -ANIMATE_TAB_STEPS; i <= 0; i++)
         {
-            aptMainLoop();
+            app3dsMainLoop();
             menu3dsDrawEverything(0, i, 0);
             menu3dsSwapBuffersAndWaitForVBlank();
         }
@@ -561,7 +566,7 @@ SMenuTab *menu3dsAnimateTab(int direction)
     {
         for (int i = -1; i >= -ANIMATE_TAB_STEPS; i--)
         {
-            aptMainLoop();
+            app3dsMainLoop();
             menu3dsDrawEverything(0, i, 0);
             menu3dsSwapBuffersAndWaitForVBlank();
         }
@@ -573,7 +578,7 @@ SMenuTab *menu3dsAnimateTab(int direction)
         
         for (int i = ANIMATE_TAB_STEPS; i >= 0; i--)
         {
-            aptMainLoop();
+            app3dsMainLoop();
             menu3dsDrawEverything(0, i, 0);
             menu3dsSwapBuffersAndWaitForVBlank();
         }
@@ -617,7 +622,7 @@ int menu3dsMenuSelectItem(bool (*itemChangedCallback)(int ID, int value))
 
     for (int i = 0; i < 2; i ++)
     {
-        aptMainLoop();
+        app3dsMainLoop();
         menu3dsDrawEverything();
         menu3dsSwapBuffersAndWaitForVBlank();
 
@@ -625,7 +630,7 @@ int menu3dsMenuSelectItem(bool (*itemChangedCallback)(int ID, int value))
         lastKeysHeld = hidKeysHeld();
     }
 
-    while (aptMainLoop())
+    while (app3dsMainLoop())
     {   
         if (appExiting)
         {
@@ -1095,7 +1100,7 @@ int menu3dsShowMenu(bool (*itemChangedCallback)(int ID, int value), bool animate
     {
         for (int f = 8; f >= 0; f--)
         {
-            aptMainLoop();
+            app3dsMainLoop();
             menu3dsDrawEverything(f, 0, 0);    
             menu3dsSwapBuffersAndWaitForVBlank();  
         }
@@ -1113,7 +1118,7 @@ void menu3dsHideMenu()
 {
     for (int f = 0; f <= 8; f++)
     {
-        aptMainLoop();
+        app3dsMainLoop();
         menu3dsDrawEverything(f, 0, 0);    
         menu3dsSwapBuffersAndWaitForVBlank();  
     }    
@@ -1169,7 +1174,7 @@ int menu3dsShowDialog(char *title, char *dialogText, int newDialogBackColor, SMe
 
     // fade the dialog fade in
     //
-    aptMainLoop();
+    app3dsMainLoop();
     menu3dsDrawEverything();
     menu3dsSwapBuffersAndWaitForVBlank();  
     //ui3dsCopyFromFrameBuffer(savedBuffer);
@@ -1177,7 +1182,7 @@ int menu3dsShowDialog(char *title, char *dialogText, int newDialogBackColor, SMe
     isDialog = true;
     for (int f = 8; f >= 0; f--)
     {
-        aptMainLoop();
+        app3dsMainLoop();
         menu3dsDrawEverything(0, 0, f);    
         menu3dsSwapBuffersAndWaitForVBlank();  
     }
@@ -1203,7 +1208,7 @@ void menu3dsHideDialog()
     //
     for (int f = 0; f <= 8; f++)
     {
-        aptMainLoop();
+        app3dsMainLoop();
         menu3dsDrawEverything(0, 0, f);        
         menu3dsSwapBuffersAndWaitForVBlank();    
     }
@@ -1212,7 +1217,7 @@ void menu3dsHideDialog()
     
     // draw the updated menu
     //
-    aptMainLoop();
+    app3dsMainLoop();
     menu3dsDrawEverything();
     menu3dsSwapBuffersAndWaitForVBlank();  
     

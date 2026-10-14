@@ -77,6 +77,7 @@ Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on t
 - Box art and screenshot previews on the top screen in the ROM list (see above), with room for NES, Famicom and Famicom Disk System covers.
 - New mappers: 30 (UNROM 512, including games that save by reprogramming their flash ROM; those saves go in a .flash file next to the ROM), 37 (Super Mario Bros. + Tetris + Nintendo World Cup), 152, 153 (Famicom Jump II), 154 (Devil Man), 155 (MMC1A), 157 (Datach, without the barcode reader), 158 (Alien Syndrome), 159 (Bandai 24C01 EEPROM games), 207 (Fudou Myouou Den) and 210 (Namco 175/340: Family Circuit '91, Splatterhouse Wanpaku Graffiti, Famista '92-'94 and others).
 - The CIA now has a title version (1.0.3), so it installs as an upgrade of older versions.
+- With auto-savestate on, exiting now saves the state (it used to load it, losing progress since the last game switch).
 
 ### v1.02
 - Fixed bug in MMC5 mapper that was causing Castlevania 3's graphics to corrupt.
