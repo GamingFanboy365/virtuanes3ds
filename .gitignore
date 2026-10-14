@@ -33,3 +33,6 @@ Thumbs.db
 
 # Python
 __pycache__/
+
+# tools/package_release.sh output
+dist/
