@@ -6,15 +6,17 @@ This 3DS version also fixes a few bugs from VirtuaNES's MMC5 mappers and even pl
 
 It also runs on your New 3DS as well!
 
+Download the latest version from the [Releases](https://github.com/GamingFanboy365/virtuanes3ds/releases) page.
+
 ### Homebrew Launcher:
 
-1. Copy virtuanes_3ds.3dsx, virtuanes_3ds.smdh and virtuanes_3ds_top.png into the /3ds/virtuanes_3ds folder on your SD card.
+1. Extract virtuanes_3ds-*-sdcard.zip to the root of your SD card. (Or copy virtuanes_3ds.3dsx, virtuanes_3ds.smdh and virtuanes_3ds_top.png into the /3ds/virtuanes_3ds folder yourself.)
 2. Place your ROMs inside any folder.
 3. Go to your Homebrew Launcher (either via Cubic Ninja, Soundhax or other entry points) and launch the virtuanes_3ds emulator.
 
 ### CIA Version:
 
-1. Use your favorite CIA installer to install virtuanes_3ds.cia into your CFW. You can also use FBI to download from TitleDB.
+1. Use your favorite CIA installer, such as FBI, to install virtuanes_3ds.cia into your CFW. It installs over older versions of VirtuaNES for 3DS.
 2. Place your ROMs inside any folder.
 3. Copy virtuanes_3ds_top.png to ROOT of your SD card.
 4. Exit your CIA installer and go to your CFW's home screen to launch the app.

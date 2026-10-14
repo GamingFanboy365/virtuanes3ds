@@ -5,6 +5,9 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
+  # Publishing a release builds and tests its tag, then attaches the build.
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -48,3 +51,25 @@ jobs:
             .azahar/mappertest/
           include-hidden-files: true
           if-no-files-found: ignore
+
+  # Attaches the tested build to a published release.
+  release:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: virtuanes_3ds
+
+      - name: Attach build to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          tools/package_release.sh "$TAG" dist
+          gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"

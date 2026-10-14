@@ -4,7 +4,7 @@ VirtuaNES is a high compatibility NES emulator for your old 3DS or 2DS. It's not
 
 This 3DS version also fixes a few bugs from VirtuaNES's MMC5 mappers and even plays Rockman 4 Minus Infinity and Zelda Legend of Link hacks.
 
-This is a fork of bubble2k16's [emus3ds](https://github.com/bubble2k16/emus3ds), narrowed down to the VirtuaNES core. See [readme-virtuanes.md](readme-virtuanes.md) for installation, usage and the change history.
+This is a fork of bubble2k16's [emus3ds](https://github.com/bubble2k16/emus3ds), narrowed down to the VirtuaNES core. Download the `.cia` or `.3dsx` from the [Releases](https://github.com/GamingFanboy365/virtuanes3ds/releases) page, and see [readme-virtuanes.md](readme-virtuanes.md) for installation, usage and the change history.
 
 While you browse the ROM list, the top screen can show box art and a screenshot of the highlighted game. NES boxes, landscape Famicom covers and square Famicom Disk System covers all fit; [readme-virtuanes.md](readme-virtuanes.md#box-art-and-screenshot-previews) explains where the images go and how `tools/make_previews.py` resizes them.
 
@@ -17,6 +17,8 @@ While you browse the ROM list, the top screen can show box art and a screenshot 
 The code builds with a current devkitARM (libctru 2.x). If you have devkitPro installed, run `make`, which produces `virtuanes_3ds.3dsx` and `virtuanes_3ds.cia`.
 
 Without a local devkitPro, `tools/build.sh` runs the same `make` inside the official `devkitpro/devkitarm` Docker image and passes its arguments through, so `tools/build.sh clean` works too.
+
+Publishing a GitHub release builds and tests its tag in CI, then attaches the `.cia`, `.3dsx`, `.smdh`, title image, an SD card zip and their checksums to the release; `tools/package_release.sh` does the packaging and also works locally.
 
 `make DEBUGOUT=1` turns on the `DEBUGOUT()` traces that are sprinkled through the VirtuaNES core and mappers (ROM header details at load time, unhandled mapper writes and so on). They go to `svcOutputDebugString`, which shows up in the emulator's log. The flag isn't tracked by the build, so run `make clean` when switching it on or off.
 
