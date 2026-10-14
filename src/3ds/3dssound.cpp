@@ -299,6 +299,7 @@ void snd3dsStartPlaying()
 
         // Fix for race condition for 64-bit access in the sound thread.
         snd3DS.upToSamplePosition = snd3dsGetSamplePosition();  
+        __sync_synchronize();   // the mixing thread on the other core must see these first
         snd3DS.isPlaying = true;
     }
 }

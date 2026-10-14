@@ -7,7 +7,9 @@
 
 typedef struct 
 {
-    bool        isPlaying = false;
+    // Shared with the mixing thread, so volatile: without it GCC reads them
+    // once and the thread spins forever on the stale value.
+    volatile bool isPlaying = false;
     
     int         audioType = 0;              // 0 - no audio, 1 - CSND, 2 - DSP
     short       *fullBuffers;
@@ -19,7 +21,7 @@ typedef struct
 
     Handle      mixingThreadHandle;
     u8          mixingThreadStack[0x4000] __attribute__((aligned(8)));
-    bool        terminateMixingThread;
+    volatile bool terminateMixingThread;
 
     s64         startSamplePosition = 0;
     s64         upToSamplePosition = 0;

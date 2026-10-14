@@ -83,6 +83,7 @@ endif
 
 # make TRACE=1 writes a log of start-up, ROM loading and the first frames to
 # sdmc:/virtuanes_trace.txt, for debugging on real hardware (see 3dstrace.h).
+# Like DEBUGOUT, the build doesn't track it: run make clean when switching.
 ifeq ($(TRACE),1)
 CFLAGS	+=	-DTRACE3DS
 endif
