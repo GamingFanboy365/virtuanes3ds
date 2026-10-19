@@ -16,6 +16,16 @@
 #define LEFT_CHANNEL        10
 #define RIGHT_CHANNEL       11
 
+// make HWTEST=1 runs this real-hardware sound code in Azahar, whose CSND
+// service is a stub that never completes a command. Only the calls into
+// the CSND service are skipped; everything around them, including the
+// mixing thread, runs as on a 3DS. See tools/azahar/hwpathtest.py.
+#ifdef HWTEST3DS
+#define CSND_SERVICE(call)  0
+#else
+#define CSND_SERVICE(call)  (call)
+#endif
+
 
 SSND3DS snd3DS;
 volatile int snd3dsMixCount = 0;
@@ -177,7 +187,7 @@ void snd3dsMixSamples()
     // So we only flush data cache if the snd3DS.isPlaying is true.
     //
     if (blockCount % MIN_FORWARD_BLOCKS == 0 && snd3DS.isPlaying)
-        CSND_FlushDataCache(snd3DS.fullBuffers, SAMPLEBUFFER_SIZE * 2 * 2);
+        CSND_SERVICE(CSND_FlushDataCache(snd3DS.fullBuffers, SAMPLEBUFFER_SIZE * 2 * 2));
     t3dsEndTiming(43);
 }
 
@@ -232,7 +242,7 @@ Result snd3dsPlaySound(int chn, u32 flags, u32 sampleRate, float vol, float pan,
 		{
 			int adpcmSample = ((s16*)data0)[-2];
 			int adpcmIndex = ((u8*)data0)[-2];
-			CSND_SetAdpcmState(chn, 0, adpcmSample, adpcmIndex);
+			CSND_SERVICE(CSND_SetAdpcmState(chn, 0, adpcmSample, adpcmIndex));
 		}
 	}
 
@@ -247,15 +257,15 @@ Result snd3dsPlaySound(int chn, u32 flags, u32 sampleRate, float vol, float pan,
     csndTicksPerSecond = (uint64)timer * 4 * sampleRate;
 
 	u32 volumes = CSND_VOL(vol, pan);
-	CSND_SetChnRegs(flags, paddr0, paddr1, size, volumes, volumes);
+	CSND_SERVICE(CSND_SetChnRegs(flags, paddr0, paddr1, size, volumes, volumes));
 
 	if (loopMode == CSND_LOOPMODE_NORMAL && paddr1 > paddr0)
 	{
 		// Now that the first block is playing, configure the size of the subsequent blocks
 		size -= paddr1 - paddr0;
-		CSND_SetBlock(chn, 1, paddr1, size);
+		CSND_SERVICE(CSND_SetBlock(chn, 1, paddr1, size));
 	}
-    CSND_SetPlayState(chn, 1);
+    CSND_SERVICE(CSND_SetPlayState(chn, 1));
     return 0;
 }
 
@@ -275,7 +285,7 @@ void snd3dsStartPlaying()
             snd3DS.leftBuffer[i] = 0;
             snd3DS.rightBuffer[i] = 0;
         }
-        CSND_FlushDataCache(snd3DS.fullBuffers, SAMPLEBUFFER_SIZE * 2 * 2);
+        CSND_SERVICE(CSND_FlushDataCache(snd3DS.fullBuffers, SAMPLEBUFFER_SIZE * 2 * 2));
         
         // CSND
         // Fix: Copied libctru's csndPlaySound and modified it so that it will
@@ -294,7 +304,7 @@ void snd3dsStartPlaying()
 
         // Flush CSND command buffers
         TRACE3DS_LOG("csndExecCmds");
-        Result execRet = csndExecCmds(true);
+        Result execRet = CSND_SERVICE(csndExecCmds(true));
         TRACE3DS_LOG("csndExecCmds: %08lx", execRet);
         snd3DS.startTick = svcGetSystemTick();
 
@@ -314,11 +324,11 @@ void snd3dsStopPlaying()
     if (snd3DS.isPlaying)
     {
         snd3DS.isPlaying = false;
-        CSND_SetPlayState(LEFT_CHANNEL, 0);
-        CSND_SetPlayState(RIGHT_CHANNEL, 0);
+        CSND_SERVICE(CSND_SetPlayState(LEFT_CHANNEL, 0));
+        CSND_SERVICE(CSND_SetPlayState(RIGHT_CHANNEL, 0));
 
         // Flush CSND command buffers
-        csndExecCmds(true);
+        CSND_SERVICE(csndExecCmds(true));
     }
 }
 
@@ -363,7 +373,7 @@ bool snd3dsInitialize()
         return true;
 
     Result ret = 0;
-    ret = csndInit();
+    ret = CSND_SERVICE(csndInit());
     TRACE3DS_LOG("csndInit: %08lx", ret);
 
 #ifndef EMU_RELEASE
@@ -465,7 +475,7 @@ void snd3dsFinalize()
     if (snd3DS.audioType == 1)
     {
         TRACE3DS_LOG("csndExit");
-        csndExit();
+        CSND_SERVICE(csndExit());
         TRACE3DS_LOG("csndExit done");
     }
     else if(snd3DS.audioType == 2)

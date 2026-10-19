@@ -1149,6 +1149,10 @@ bool gpu3dsInitialize()
     // query with a non-zero emulator ID; real hardware returns an error.
     s64 emulatorId = 0;
     emulator.isReal3DS = !(R_SUCCEEDED(svcGetSystemInfo(&emulatorId, 0x20000, 0)) && emulatorId != 0);
+#ifdef HWTEST3DS
+    // make HWTEST=1: take the real-hardware code paths in Azahar.
+    emulator.isReal3DS = true;
+#endif
 #else
     if (file3dsGetCurrentDir()[0] != '/')
         emulator.isReal3DS = true;

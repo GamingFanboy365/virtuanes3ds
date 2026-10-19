@@ -50,6 +50,30 @@ tools/azahar/gdb.sh
 
 `tools/azahar/mappertest.py` does the same for mappers: it generates a test ROM per mapper whose code sets the mapper's registers and checks what the CPU and PPU then see (every PRG and CHR bank starts with its own number) and how the nametables are mirrored. The screen turns green when every check passes, and red otherwise. Pass mapper numbers to run only those, e.g. `tools/azahar/mappertest.py 210`.
 
+## Code that only runs on a real 3DS
+
+Some code only runs on real hardware: under Azahar and Citra the app turns sound off (they have no CSND sound), skips the waits for the GPU, and never sees the HOME menu. That's where v1.03's first build broke on a New 3DS XL while every test passed: games hung at start-up, sound was silent, the HOME menu looped the last second of audio, Exit crashed the system, and closing from the HOME menu hung. Two checks keep those fixes from coming undone, and CI runs both on every push and pull request (a release only gets files if they pass):
+
+- `tools/check_hardware_pitfalls.py` looks for the causes in the source:
+  - `svcCreateThread` instead of `threadCreate`
+  - `aptMainLoop()` called directly instead of `app3dsMainLoop()`
+  - manual `aptExit`/`srvExit`/`hidExit` calls
+  - the sound thread's shared flags without `volatile`
+  - `-w` in the build flags, or `-Werror=return-type` missing
+- `tools/azahar/hwpathtest.py` runs that code in Azahar, on a `make HWTEST=1` build. That build takes the real-hardware paths with only the CSND service calls skipped, and simulates the HOME menu. It checks that:
+  - a game boots and the sound thread mixes;
+  - the HOME menu silences the sound and returning restores it;
+  - Exit shuts down and ends the process;
+  - closing from the HOME menu (GPU taken away, close ordered) doesn't hang, in a game or in the in-game menu.
+
+```sh
+tools/check_hardware_pitfalls.py
+tools/build.sh clean && tools/build.sh HWTEST=1 && tools/azahar/hwpathtest.py
+tools/build.sh clean && tools/build.sh    # back to a normal build
+```
+
+Neither can play real sound or run the real HOME menu, so when you change the sound, HOME menu, exit or GPU-wait code, also try a `make TRACE=1` build on a 3DS.
+
 ## Adding a mapper
 
 Mappers live in `src/cores/virtuanes/NES/Mapper`, one class per mapper (`MapperNNN.h` and `MapperNNN.cpp`) deriving from `Mapper`. They are compiled as part of `src/cores/virtuanes/NES/MapperFactory.cpp`, which `#include`s every mapper header and source file, and whose `CreateMapper()` maps iNES mapper numbers (and UNIF board names) to the classes. So a new mapper needs its two files plus the two `#include`s and a `case` in `CreateMapper()`. The existing mappers such as `Mapper003` (CNROM) are the best reference for the bank switching helpers (`SetPROM_8K_Bank()`, `SetVROM_1K_Bank()` and friends).

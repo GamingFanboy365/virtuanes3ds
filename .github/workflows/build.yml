@@ -52,10 +52,40 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
 
+  # The code that otherwise only runs on a real 3DS (the sound thread, GPU
+  # waits, HOME menu hooks, Exit, closing from the HOME menu), in Azahar.
+  # Each of these once broke on hardware while every other test passed.
+  hardware-paths:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for known causes of real-hardware bugs
+        run: tools/check_hardware_pitfalls.py
+
+      - name: Build with the real-hardware paths forced on
+        run: tools/build.sh HWTEST=1
+
+      - name: Pull Azahar
+        run: docker pull -q linuxserver/azahar:latest
+
+      - name: Real-hardware paths in Azahar
+        run: tools/azahar/hwpathtest.py
+
+      - name: Upload screenshots, logs and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hwpathtest
+          path: .azahar/hwpathtest/
+          include-hidden-files: true
+          if-no-files-found: ignore
+
   # Attaches the tested build to a published release.
   release:
     if: github.event_name == 'release'
-    needs: build
+    needs: [build, hardware-paths]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

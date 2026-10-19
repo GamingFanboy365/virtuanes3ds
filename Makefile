@@ -88,6 +88,14 @@ ifeq ($(TRACE),1)
 CFLAGS	+=	-DTRACE3DS
 endif
 
+# make HWTEST=1 is for tools/azahar/hwpathtest.py: it runs the code paths
+# that otherwise only run on a real 3DS (sound thread, GPU waits, HOME menu
+# and exit handling) in Azahar, with only the CSND service calls skipped,
+# and implies TRACE=1. Never release it. Run make clean when switching.
+ifeq ($(HWTEST),1)
+CFLAGS	+=	-DHWTEST3DS -DTRACE3DS
+endif
+
 CXXFLAGS	:= $(CFLAGS)  -fno-exceptions -std=gnu++11
 
 ASFLAGS	:=	-g $(ARCH)
