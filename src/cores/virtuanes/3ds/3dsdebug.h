@@ -3,7 +3,7 @@
 #define DEBUG_WAIT_L_KEY 	\
     { \
         uint32 prevkey = 0; \
-        while (aptMainLoop()) \ 
+        while (app3dsMainLoop()) \ 
         {  \
             hidScanInput(); \ 
             uint32 key = hidKeysHeld(); \

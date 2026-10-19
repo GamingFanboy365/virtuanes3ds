@@ -24,7 +24,7 @@
     {                                                                       \
         hidScanInput();                                                     \
         uint32 prevkey = hidKeysHeld();                                     \
-        while (aptMainLoop())                                               \
+        while (app3dsMainLoop())                                               \
         {                                                                   \
             hidScanInput();                                                 \
             uint32 key = hidKeysHeld();                                     \
