@@ -98,8 +98,10 @@ fi
 find "$SDMC" -maxdepth 1 -type f \( -iname '*.nes' -o -iname '*.fds' -o -iname '*.nsf' \) -delete
 # Headless runs also start without installed titles or app data (/3ds),
 # so the ROM list is just the ROMs (plus the "Nintendo 3DS" folder,
-# listed first, when running a .cia, and whatever -s puts there).
-[ "$GUI" = 1 ] || rm -rf "$SDMC/Nintendo 3DS" "$SDMC/3ds"
+# listed first, when running a .cia, and whatever -s puts there), and
+# without the global settings, where VirtuaNES remembers the last ROM
+# folder and ROM: the list starts at the root, on its first entry.
+[ "$GUI" = 1 ] || rm -rf "$SDMC/Nintendo 3DS" "$SDMC/3ds" "$SDMC/virtuanes_3ds.cfg"
 for rom in ${ROMS[@]+"${ROMS[@]}"}; do
     cp "$rom" "$SDMC/"
 done

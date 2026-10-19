@@ -35,6 +35,30 @@ static SPreviewImage titleImage = { NULL, 0, 0 };
 static char previewShown[_MAX_PATH];
 
 
+//---------------------------------------------------------
+// "Donkey Kong (USA) [!]" -> "Donkey Kong": the title without
+// the bracketed region and dump tags, so one image can serve
+// every version of a game.
+//---------------------------------------------------------
+static void previewStripTags(const char *name, char *title, size_t size)
+{
+    size_t n = 0;
+    int depth = 0;
+    for (const char *p = name; *p && n + 1 < size; p++)
+    {
+        if (*p == '(' || *p == '[')
+            depth++;
+        else if ((*p == ')' || *p == ']') && depth > 0)
+            depth--;
+        else if (depth == 0)
+            title[n++] = *p;
+    }
+    while (n > 0 && title[n - 1] == ' ')
+        n--;
+    title[n] = 0;
+}
+
+
 static bool previewLoad(SPreviewImage *image, const char *folder, const char *romName)
 {
     char path[_MAX_PATH];
@@ -105,12 +129,33 @@ static void previewDraw(u32 *fb, SPreviewImage *image, int slotX, int slotY, int
 }
 
 
+unsigned preview3dsDecodeTitleImage(unsigned char **pixels, unsigned *width, unsigned *height)
+{
+    // The app's folder first, where the .3dsx looks too, then the
+    // current directory (the SD card root for the CIA).
+    const char *name = strrchr(impl3dsTitleImage, '/');
+    name = name ? name + 1 : impl3dsTitleImage;
+    char path[_MAX_PATH];
+    snprintf(path, _MAX_PATH, "%s/%s", impl3dsPreviewDir, name);
+
+    *pixels = NULL;
+    unsigned error = lodepng_decode32_file(pixels, width, height, path);
+    if (error)
+    {
+        free(*pixels);
+        *pixels = NULL;
+        error = lodepng_decode32_file(pixels, width, height, impl3dsTitleImage);
+    }
+    return error;
+}
+
+
 void preview3dsBegin()
 {
     previewActive = true;
     previewShown[0] = 0;
 
-    if (lodepng_decode32_file(&titleImage.pixels, &titleImage.width, &titleImage.height, impl3dsTitleImage)
+    if (preview3dsDecodeTitleImage(&titleImage.pixels, &titleImage.width, &titleImage.height)
         || titleImage.width != SCREEN_WIDTH || titleImage.height != SCREEN_HEIGHT)
     {
         previewFree(&titleImage);
@@ -146,8 +191,16 @@ void preview3dsShow(const char *romFileName)
     bool found = false;
     if (romName[0])
     {
-        found |= previewLoad(&boxart, "boxart", romName);
-        found |= previewLoad(&snap, "snaps", romName);
+        // An image named exactly like the ROM, or else after its
+        // title without tags: Donkey Kong.png for Donkey Kong (USA).nes.
+        char title[_MAX_PATH];
+        previewStripTags(romName, title, _MAX_PATH);
+        bool tryTitle = title[0] && strcmp(title, romName) != 0;
+
+        found |= previewLoad(&boxart, "boxart", romName) ||
+                 (tryTitle && previewLoad(&boxart, "boxart", title));
+        found |= previewLoad(&snap, "snaps", romName) ||
+                 (tryTitle && previewLoad(&snap, "snaps", title));
     }
 
     u32 *fb = (u32 *) gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);

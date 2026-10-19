@@ -53,7 +53,7 @@ void clearTopScreenWithLogo()
 	unsigned char* image;
 	unsigned width, height;
 
-    int error = lodepng_decode32_file(&image, &width, &height, impl3dsTitleImage);
+    int error = preview3dsDecodeTitleImage(&image, &width, &height);
 
     if (!error && width == 400 && height == 240)
     {
@@ -360,6 +360,10 @@ void menuSelectFileWithoutPreviews(void)
             }
             else
             {
+                // Remember this folder and ROM for next time, as loading
+                // a ROM from the in-game menu does.
+                emulatorSettingsSave(true, false, false);
+
                 if (!emulatorLoadRom())
                 {
                     menu3dsShowDialog("Load ROM", "Hmm... unable to load ROM.", DIALOGCOLOR_RED, optionsForOk);
