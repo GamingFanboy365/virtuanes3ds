@@ -100,6 +100,26 @@ static bool hwtestSimulatedClose()
         TRACE3DS_LOG("hwtest: 2 seconds after returning, mixed %d", snd3dsMixCount);
     return closed;
 }
+
+//--------------------------------------------------------
+// make HWTEST=1 links every GPU wait here (-Wl,--wrap). On a
+// 3DS, waiting for a GPU event without owning the GPU (after
+// the HOME menu took it to close the app) never returns, but
+// Azahar signals the event anyway. Hang like the 3DS, so
+// hwpathtest.py catches a wait without the gspHasGpuRight()
+// check.
+//--------------------------------------------------------
+extern "C" void __real_gspWaitForEvent(GSPGPU_Event id, bool nextEvent);
+extern "C" void __wrap_gspWaitForEvent(GSPGPU_Event id, bool nextEvent)
+{
+    if (!gspHasGpuRight())
+    {
+        TRACE3DS_LOG("hwtest: waiting for GPU event %d without the GPU, which never returns on a 3DS", (int)id);
+        while (true)
+            svcSleepThread(1000000000LL);
+    }
+    __real_gspWaitForEvent(id, nextEvent);
+}
 #endif
 
 bool app3dsMainLoop()

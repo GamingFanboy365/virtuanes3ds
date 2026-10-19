@@ -101,6 +101,12 @@ CXXFLAGS	:= $(CFLAGS)  -fno-exceptions -std=gnu++11
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
+# HWTEST: route every GPU wait through __wrap_gspWaitForEvent (3dsexit.cpp),
+# which hangs like a real 3DS when the app waits without owning the GPU.
+ifeq ($(HWTEST),1)
+LDFLAGS	+=	-Wl,--wrap=gspWaitForEvent
+endif
+
 LIBS	:= -lctru -lm
 
 #---------------------------------------------------------------------------------
