@@ -11,7 +11,8 @@
 // Famicom Disk System covers) and
 // <impl3dsPreviewDir>/snaps/<ROM name>.png (200x175 slot on
 // the right), where <ROM name> is the ROM's file name
-// without its extension. Images of that size or smaller are
+// without its extension, or else its title without the
+// bracketed tags (Donkey Kong.png for Donkey Kong (USA).nes). Images of that size or smaller are
 // drawn as they are; larger ones are scaled down to fit.
 // A game with only one of the two images has it centred.
 // Without either image, the top screen shows the title
@@ -27,5 +28,10 @@ void preview3dsShow(const char *romFileName);
 
 // Call after leaving the ROM menu.
 void preview3dsEnd();
+
+// Decodes the 400x240 title image (impl3dsTitleImage), looking in
+// impl3dsPreviewDir first and then the current directory. Returns
+// lodepng's error code: 0 on success, and *pixels must be freed.
+unsigned preview3dsDecodeTitleImage(unsigned char **pixels, unsigned *width, unsigned *height);
 
 #endif

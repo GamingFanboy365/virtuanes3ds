@@ -18,7 +18,7 @@ Download the latest version from the [Releases](https://github.com/GamingFanboy3
 
 1. Use your favorite CIA installer, such as FBI, to install virtuanes_3ds.cia into your CFW. It installs over older versions of VirtuaNES for 3DS.
 2. Place your ROMs inside any folder.
-3. Copy virtuanes_3ds_top.png to ROOT of your SD card.
+3. Copy virtuanes_3ds_top.png to the /3ds/virtuanes_3ds folder (or to the root of your SD card, where older versions looked for it).
 4. Exit your CIA installer and go to your CFW's home screen to launch the app.
 
 ### FDS BIOS
@@ -28,10 +28,12 @@ Download the latest version from the [Releases](https://github.com/GamingFanboy3
 
 ### Box art and screenshot previews
 
-While you browse the ROM list, the top screen can show box art and a screenshot of the highlighted game. Put them on your SD card as PNG files named like the ROM, without its extension:
+While you browse the ROM list, the top screen can show box art and a screenshot of the highlighted game. Put them on your SD card as PNG files named like the ROM, without its extension, in the boxart and snaps folders inside /3ds/virtuanes_3ds (for both the CIA and the Homebrew Launcher version):
 
-1. Box art: /3ds/virtuanes_3ds/boxart/Super Mario Bros. 3.png (shown on the left, up to 176x200: 150x200 for an NES box, 176x132 for a Famicom cover, 176x176 for a Famicom Disk System cover)
-2. Screenshot: /3ds/virtuanes_3ds/snaps/Super Mario Bros. 3.png (shown at 200x175, on the right)
+1. Box art: /3ds/virtuanes_3ds/boxart/Super Mario Bros. 3 (USA).png (shown on the left, up to 176x200: 150x200 for an NES box, 176x132 for a Famicom cover, 176x176 for a Famicom Disk System cover)
+2. Screenshot: /3ds/virtuanes_3ds/snaps/Super Mario Bros. 3 (USA).png (shown at 200x175, on the right)
+
+If there's no image with the ROM's exact name, VirtuaNES also tries its title without the bracketed tags, so Super Mario Bros. 3.png works for Super Mario Bros. 3 (USA).nes and Super Mario Bros. 3 (Europe) [!].nes alike. It doesn't work the other way round: Super Mario Bros. 3 (USA).png isn't used for a ROM named Super Mario Bros. 3.nes.
 
 Images at those sizes load fastest and look best; larger ones are scaled down to fit. A game with only one of the two images shows it in the middle of the screen, and games without either image show the title image instead.
 
@@ -39,7 +41,7 @@ Images at those sizes load fastest and look best; larger ones are scaled down to
 
     python3 tools/make_previews.py --boxarts Named_Boxarts --snaps Named_Snaps --roms path/to/your/roms --out previews
 
-Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on the SD card. With --roms, the images are named after your ROM files, and ROMs named differently from the pack's images (Tennis.nes against "Tennis (Japan, USA)") are matched by title.
+Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on the SD card. With --roms, the images are named after your ROM files, and ROMs named differently from the pack's images (Tennis.nes against "Tennis (Japan, USA)") are matched by title, which covers the other way round too.
 
 ### When in-game,
 
@@ -69,6 +71,11 @@ Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on t
 ## Change History
 
 *VirtuaNES:*
+
+### Unreleased
+- The ROM list opens in the folder of the last game you loaded (it used to remember it only after you changed a setting).
+- Box art and screenshots are also found under the game's title without bracketed tags: Donkey Kong.png for Donkey Kong (USA).nes.
+- The CIA version also finds the title image (virtuanes_3ds_top.png) in /3ds/virtuanes_3ds, like the Homebrew Launcher version.
 
 ### v1.03
 - Builds with current devkitARM (libctru 2.x) on Linux, macOS and Windows.
