@@ -72,7 +72,7 @@ Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on t
 
 *VirtuaNES:*
 
-### Unreleased
+### v1.04
 - Fixed the game's picture freezing after going to the HOME menu and back.
 - The in-game menu's Select ROM tab shows box art and screenshots too; the other tabs keep showing the paused game.
 - The ROM list opens in the folder of the last game you loaded (it used to remember it only after you changed a setting).
