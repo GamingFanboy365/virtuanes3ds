@@ -295,6 +295,44 @@ void menuShowPreview(int tabIndex, int itemID)
 
 
 //----------------------------------------------------------------------
+// The same in the in-game menu, where "Select ROM" is tab 4: the
+// previews (or the title image) while that tab is open, and the paused
+// game's picture in the other tabs.
+//----------------------------------------------------------------------
+static bool inGamePreviews = false;
+
+void menuEndPreviewInGame()
+{
+    if (inGamePreviews)
+    {
+        preview3dsEnd();
+        inGamePreviews = false;
+    }
+}
+
+void menuShowPreviewInGame(int tabIndex, int itemID)
+{
+    if (tabIndex == 4)
+    {
+        if (!inGamePreviews)
+        {
+            preview3dsBegin();
+            inGamePreviews = true;
+        }
+        if (itemID >= 0 && itemID < fileList.size() && fileList[itemID][0] != 1)
+            preview3dsShow(fileList[itemID].c_str());
+        else
+            preview3dsShow(NULL);
+    }
+    else if (inGamePreviews)
+    {
+        menuEndPreviewInGame();
+        menu3dsSetTransferGameScreen(true);
+    }
+}
+
+
+//----------------------------------------------------------------------
 // Start up menu.
 //----------------------------------------------------------------------
 void menuSelectFileWithoutPreviews(void);
@@ -461,6 +499,7 @@ void menuPause()
         menu3dsSetSelectedItemIndexByID(4, previousFileID);
     menu3dsSetCurrentMenuTab(0);
     menu3dsSetTransferGameScreen(true);
+    menu3dsSetHighlightCallback(menuShowPreviewInGame);
 
     bool animateMenu = true;
 
@@ -675,6 +714,14 @@ void menuPause()
             }
         }
 
+    }
+
+    // The paused (or newly loaded) game gets the top screen back.
+    menu3dsSetHighlightCallback(NULL);
+    if (inGamePreviews)
+    {
+        menuEndPreviewInGame();
+        menu3dsSetTransferGameScreen(true);
     }
 
     menu3dsHideMenu();
@@ -912,6 +959,7 @@ void emulatorLoop()
 
     bool firstFrame = true;
 
+    gpu3dsRestoreLostState();   // if the HOME menu was visited from a menu
     gpu3dsResetState();
 
     frameCount60 = 60;
@@ -948,6 +996,22 @@ void emulatorLoop()
 
         if (appExiting)
             break;
+
+        // Back from the HOME menu, which used the GPU meanwhile: set the
+        // GPU up again as when coming from the menu, or the picture stays
+        // frozen. The visit doesn't count as one very slow frame either.
+        if (gpu3dsRestoreLostState())
+        {
+            impl3dsEmulationBegin();
+            startFrameTick = svcGetSystemTick();
+            emuFrameTotalActualTicks = 0;
+            emuFrameTotalAccurateTicks = 0;
+            emuFramesSkipped = 0;
+            skipDrawingFrame = false;
+#ifdef TRACE3DS
+            traceFrame = 0;     // log the first frames after returning as well
+#endif
+        }
 
 #ifdef TRACE3DS
         trace3dsProgress++;

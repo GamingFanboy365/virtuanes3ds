@@ -11,6 +11,7 @@
 
 #include "3dstypes.h"
 #include "3dsgpu.h"
+#include "3dsexit.h"
 #include "3dstrace.h"
 #include "3dsfiles.h"
 #include "3dsmain.h"
@@ -953,6 +954,122 @@ void gpu3dsSetRenderTargetToTextureSpecific(SGPUTexture *texture, SGPUTexture *d
 }
 
 
+//---------------------------------------------------------
+// Sends the GPU state that is set once and then relied on:
+// the render target and viewport, and the fixed parts of
+// the pipeline. At start-up, and again after the HOME menu
+// (or another applet) has used the GPU.
+//---------------------------------------------------------
+static void gpu3dsSendFixedState()
+{
+    gpu3dsInitializeRenderTargetToTopFrameBuffer();
+
+    // Features this renderer never uses, switched off in case
+    // whoever had the GPU before left them on (the same
+    // defaults as citro3d's). GPU_SetViewport, above, has
+    // already switched the scissor test off.
+    GPUCMD_AddWrite(GPUREG_LIGHTING_ENABLE0, 0);
+    GPUCMD_AddWrite(GPUREG_LIGHTING_ENABLE1, 1);
+    GPUCMD_AddMaskedWrite(GPUREG_TEXENV_UPDATE_BUFFER, 0x7, 0);     // no fog
+    GPUCMD_AddMaskedWrite(GPUREG_COLOR_OPERATION, 0x5, 0x00E40000 | GPU_FRAGOPMODE_GL);
+
+	GPU_DepthMap(-1.0f, 0.0f);
+	GPU_SetDepthTestAndWriteMask(false, GPU_GEQUAL, GPU_WRITE_ALL);
+	GPUCMD_AddMaskedWrite(GPUREG_EARLYDEPTH_TEST1, 0x1, 0);
+	GPUCMD_AddWrite(GPUREG_EARLYDEPTH_TEST2, 0);
+
+	GPU_SetFaceCulling(GPU_CULL_NONE);
+	GPU_SetStencilTest(false, GPU_ALWAYS, 0x00, 0xFF, 0x00);
+	GPU_SetStencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_KEEP);
+
+	GPU_SetBlendingColor(0,0,0,0);
+	GPU_SetAlphaBlending(
+		GPU_BLEND_ADD,
+		GPU_BLEND_ADD,
+		GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+		GPU_ONE, GPU_ZERO
+	);
+	gpu3dsEnableAlphaTestNotEqualsZero();
+    GPU_SetTextureBorderColor(GPU_TEXUNIT0, 0);
+
+    gpu3dsSetTextureEnvironmentReplaceTexture0();
+	gpu3dsClearTextureEnv(1);
+	gpu3dsClearTextureEnv(2);
+	gpu3dsClearTextureEnv(3);
+	gpu3dsClearTextureEnv(4);
+	gpu3dsClearTextureEnv(5);
+}
+
+
+//---------------------------------------------------------
+// While the app is suspended, the HOME menu (or another
+// applet) uses the GPU and leaves its own state in the GPU's
+// registers: the system saves and restores VRAM, but not
+// those. The game then drew with the HOME menu's shader,
+// viewport and render target, into nothing, and the top
+// screen stayed frozen on its last frame.
+//
+// After a suspension, this forgets what the GPU is assumed to
+// hold and sends the fixed state again. Returns true if it
+// did; the caller then sets up whatever it draws with (see
+// impl3dsEmulationBegin) as it would coming from the menu.
+//---------------------------------------------------------
+bool gpu3dsRestoreLostState()
+{
+    static int resumesSeen = 0;
+    if (resumesSeen == appResumeCount)
+        return false;
+    resumesSeen = appResumeCount;
+
+    // Not when the system took the GPU to close the app.
+    if (!gspHasGpuRight())
+        return false;
+
+    TRACE3DS_LOG("restoring the GPU state after a suspension");
+    GPU3DS.currentShader = -1;
+    GPU3DS.currentTexture = NULL;
+    GPU3DS.currentParams = 0;
+    GPU3DS.currentAttributeBuffer = NULL;
+    GPU3DS.currentTotalAttributes = 0;
+    GPU3DS.currentAttributeFormats = 0;
+    prevSliderVal = -1;         // the parallax barrier setting too
+
+	GPUCMD_SetBufferOffset(0);
+    gpu3dsSendFixedState();
+    gpu3dsFlush();
+    gpu3dsWaitForPreviousFlush();
+    return true;
+}
+
+
+#ifdef HWTEST3DS
+//---------------------------------------------------------
+// make HWTEST=1: leaves the GPU as the HOME menu leaves it
+// for a suspended app, with someone else's state in its
+// registers: another vertex shader and uniforms, a scissor
+// rectangle and no textures. Any one of these freezes the
+// game's picture until gpu3dsRestoreLostState() runs. See
+// tools/azahar/hwpathtest.py.
+//---------------------------------------------------------
+void gpu3dsHwtestClobberState()
+{
+    static u32 endOnly[4] = { 0x88000000, 0x88000000, 0x88000000, 0x88000000 };  // END
+    static float zeros[16] = { 0 };
+
+	GPUCMD_SetBufferOffset(0);
+    GPUCMD_AddWrite(GPUREG_VSH_CODETRANSFER_CONFIG, 0);
+    GPUCMD_AddWrites(GPUREG_VSH_CODETRANSFER_DATA, endOnly, 4);
+    GPUCMD_AddWrite(GPUREG_VSH_CODETRANSFER_END, 1);
+    GPUCMD_AddWrite(GPUREG_VSH_ENTRYPOINT, 0x7FFF0000);
+    GPU_SetFloatUniform(GPU_VERTEX_SHADER, renderTargetVertexShaderRegister, (u32 *)zeros, 4);
+    GPU_SetScissorTest(GPU_SCISSOR_NORMAL, 0, 0, 1, 1);
+    GPU_SetTextureEnable((GPU_TEXUNIT)0);
+    gpu3dsFlush();
+    gpu3dsWaitForPreviousFlush();
+}
+#endif
+
+
 void gpu3dsFlush()
 {
     u32 offset;
@@ -1187,32 +1304,7 @@ bool gpu3dsInitialize()
     printf ("gpu3dsInitialize - Set GPU statuses\n");
 #endif
 	GPUCMD_SetBufferOffset(0);
-    gpu3dsInitializeRenderTargetToTopFrameBuffer();
-
-	GPU_DepthMap(-1.0f, 0.0f);
-	GPU_SetDepthTestAndWriteMask(false, GPU_GEQUAL, GPU_WRITE_ALL);
-	GPUCMD_AddMaskedWrite(GPUREG_EARLYDEPTH_TEST1, 0x1, 0);
-	GPUCMD_AddWrite(GPUREG_EARLYDEPTH_TEST2, 0);
-
-	GPU_SetFaceCulling(GPU_CULL_NONE);
-	GPU_SetStencilTest(false, GPU_ALWAYS, 0x00, 0xFF, 0x00);
-	GPU_SetStencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_KEEP);
-
-	GPU_SetBlendingColor(0,0,0,0);
-	GPU_SetAlphaBlending(
-		GPU_BLEND_ADD,
-		GPU_BLEND_ADD,
-		GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-		GPU_ONE, GPU_ZERO
-	);
-	gpu3dsEnableAlphaTestNotEqualsZero();
-    GPU_SetTextureBorderColor(GPU_TEXUNIT0, 0);
-
-    gpu3dsSetTextureEnvironmentReplaceTexture0();
-
-	GPUCMD_Finalize();
-	//GPUCMD_FlushAndRun();
-    //gspWaitForP3D();
+    gpu3dsSendFixedState();
 
     gpu3dsFlush();
     gpu3dsWaitForPreviousFlush();

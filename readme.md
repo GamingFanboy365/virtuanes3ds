@@ -52,7 +52,7 @@ tools/azahar/gdb.sh
 
 ## Code that only runs on a real 3DS
 
-Some code only runs on real hardware: under Azahar and Citra the app turns sound off (they have no CSND sound), skips the waits for the GPU, and never sees the HOME menu. That's where v1.03's first build broke on a New 3DS XL while every test passed: games hung at start-up, sound was silent, the HOME menu looped the last second of audio, Exit crashed the system, and closing from the HOME menu hung. Two checks keep those fixes from coming undone, and CI runs both on every push and pull request (a release only gets files if they pass):
+Some code only runs on real hardware: under Azahar and Citra the app turns sound off (they have no CSND sound), skips the waits for the GPU, and never sees the HOME menu. That's where v1.03's first build broke on a New 3DS XL while every test passed: games hung at start-up, sound was silent, the HOME menu looped the last second of audio, Exit crashed the system, closing from the HOME menu hung, and the picture stayed frozen after returning from the HOME menu. Two checks keep those fixes from coming undone, and CI runs both on every push and pull request (a release only gets files if they pass):
 
 - `tools/check_hardware_pitfalls.py` looks for the causes in the source:
   - `svcCreateThread` instead of `threadCreate`
@@ -63,6 +63,7 @@ Some code only runs on real hardware: under Azahar and Citra the app turns sound
 - `tools/azahar/hwpathtest.py` runs that code in Azahar, on a `make HWTEST=1` build. That build takes the real-hardware paths with only the CSND service calls skipped, and simulates the HOME menu. It checks that:
   - a game boots and the sound thread mixes;
   - the HOME menu silences the sound and returning restores it;
+  - the picture is live again after returning, although the simulated HOME menu overwrote the GPU's state as the real one does;
   - Exit shuts down and ends the process;
   - closing from the HOME menu (GPU taken away, close ordered) doesn't hang, in a game or in the in-game menu.
 

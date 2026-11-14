@@ -5,12 +5,14 @@
 
 #include "3dsexit.h"
 #include "3dsemu.h"
+#include "3dsgpu.h"
 #include "3dsmain.h"
 #include "3dssound.h"
 #include "3dstrace.h"
 
 aptHookCookie hookCookie;
 int appExiting = 0;
+int appResumeCount = 0;
 
 void setExitFlag(APT_HookType hook, void* param)
 {
@@ -25,6 +27,11 @@ void setExitFlag(APT_HookType hook, void* param)
         // to stop, so silence it while the HOME menu is up or the lid is
         // closed, and restart it when the game comes back.
         case APTHOOK_ONSUSPEND:
+            // Let the GPU finish our last frame before the HOME menu takes it.
+            gpu3dsWaitForPreviousFlush();
+            snd3dsStopPlaying();
+            break;
+
         case APTHOOK_ONSLEEP:
             snd3dsStopPlaying();
             break;
@@ -32,6 +39,10 @@ void setExitFlag(APT_HookType hook, void* param)
         // The system also wakes the app this way to close it: no sound then.
         case APTHOOK_ONRESTORE:
         case APTHOOK_ONWAKEUP:
+            // The HOME menu used the GPU and the screens meanwhile: the game
+            // loop and the menus restore their state when they see this count.
+            if (hook == APTHOOK_ONRESTORE)
+                appResumeCount++;
             if (emulator.emulatorState == EMUSTATE_EMULATE && !appExiting && !aptShouldClose())
                 snd3dsStartPlaying();
             break;
@@ -48,7 +59,8 @@ void setExitFlag(APT_HookType hook, void* param)
 // "close-game N" or "close-menu N": after N main loop calls
 // in a game or the in-game menu). See tools/azahar/hwpathtest.py.
 //
-// suspend:  the suspend hook, then the restore hook 2 seconds
+// suspend:  the suspend hook, the GPU's state overwritten as
+//           the HOME menu does, then the restore hook 2 seconds
 //           later, as for pressing HOME and returning.
 // close-*:  what libctru does when the HOME menu closes the
 //           app: the suspend hook, the GPU released, and then
@@ -83,7 +95,10 @@ static bool hwtestSimulatedClose()
         TRACE3DS_LOG("hwtest: HOME pressed, mixed %d", snd3dsMixCount);
         setExitFlag(APTHOOK_ONSUSPEND, NULL);
         if (mode == 1)
+        {
+            gpu3dsHwtestClobberState();     // the HOME menu uses the GPU
             restoreAt = calls + 120;
+        }
         else
         {
             TRACE3DS_LOG("hwtest: closing from the HOME menu");

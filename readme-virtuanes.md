@@ -28,7 +28,7 @@ Download the latest version from the [Releases](https://github.com/GamingFanboy3
 
 ### Box art and screenshot previews
 
-While you browse the ROM list, the top screen can show box art and a screenshot of the highlighted game. Put them on your SD card as PNG files named like the ROM, without its extension, in the boxart and snaps folders inside /3ds/virtuanes_3ds (for both the CIA and the Homebrew Launcher version):
+While you browse the ROM list, at start-up or in the in-game menu's Select ROM tab, the top screen can show box art and a screenshot of the highlighted game. Put them on your SD card as PNG files named like the ROM, without its extension, in the boxart and snaps folders inside /3ds/virtuanes_3ds (for both the CIA and the Homebrew Launcher version):
 
 1. Box art: /3ds/virtuanes_3ds/boxart/Super Mario Bros. 3 (USA).png (shown on the left, up to 176x200: 150x200 for an NES box, 176x132 for a Famicom cover, 176x176 for a Famicom Disk System cover)
 2. Screenshot: /3ds/virtuanes_3ds/snaps/Super Mario Bros. 3 (USA).png (shown at 200x175, on the right)
@@ -73,6 +73,8 @@ Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on t
 *VirtuaNES:*
 
 ### Unreleased
+- Fixed the game's picture freezing after going to the HOME menu and back.
+- The in-game menu's Select ROM tab shows box art and screenshots too; the other tabs keep showing the paused game.
 - The ROM list opens in the folder of the last game you loaded (it used to remember it only after you changed a setting).
 - Box art and screenshots are also found under the game's title without bracketed tags: Donkey Kong.png for Donkey Kong (USA).nes.
 - The CIA version also finds the title image (virtuanes_3ds_top.png) in /3ds/virtuanes_3ds, like the Homebrew Launcher version.

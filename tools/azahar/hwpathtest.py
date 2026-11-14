@@ -2,10 +2,11 @@
 #
 # Runs the code that otherwise only runs on a real 3DS in Azahar, to keep
 # the hardware fixes from coming undone: the sound mixing thread, the GPU
-# waits, the HOME menu hooks, Exit and closing from the HOME menu. Each of
-# them once hung or crashed a New 3DS XL while VirtuaNES ran fine in Azahar,
-# because Azahar has neither CSND sound nor a HOME menu, and the app turns
-# sound off under emulators.
+# waits, the HOME menu hooks, restoring the GPU's state after the HOME menu,
+# Exit and closing from the HOME menu. Each of them once hung, froze or
+# crashed a New 3DS XL while VirtuaNES ran fine in Azahar, because Azahar has
+# neither CSND sound nor a HOME menu, and the app turns sound off under
+# emulators.
 #
 # It needs a `make HWTEST=1` build, which takes the real-hardware paths in
 # Azahar with only the CSND service calls skipped, logs to the SD card
@@ -68,12 +69,12 @@ def check_exit(trace, log, problems, closed_by_system):
         problems.append('the process did not end')
 
 
-def check_play_and_exit(trace, log, problems):
+def check_play_and_exit(trace, log, problems, out):
     check_running(trace, problems)
     check_exit(trace, log, problems, closed_by_system=False)
 
 
-def check_home_and_back(trace, log, problems):
+def check_home_and_back(trace, log, problems, out):
     check_running(trace, problems)
     pressed = logged_number(trace, 'hwtest: HOME pressed, mixed')
     back = logged_number(trace, 'hwtest: back to the game, mixed')
@@ -86,8 +87,19 @@ def check_home_and_back(trace, log, problems):
     if later - back < 100:
         problems.append('sound did not resume after returning (%d blocks in 2 s)' % (later - back))
 
+    # The simulated HOME menu overwrote the GPU's state. The test ROM is
+    # light blue, and red while A is held: red means the picture is live
+    # again, anything else that it stayed frozen.
+    if 'restoring the GPU state' not in trace:
+        problems.append('the GPU state was not restored after returning')
+    idle = smoketest.pixel(out, 'back', 200, 120)
+    held = smoketest.pixel(out, 'held', 200, 120)
+    if not (held[0] > 150 and held[2] < 100):
+        problems.append('the picture stayed frozen after returning: rgb%s idle, rgb%s with A held '
+                        '(want red)' % (idle, held))
 
-def check_closed(trace, log, problems):
+
+def check_closed(trace, log, problems, out):
     check_running(trace, problems)
     if 'hwtest: closing from the HOME menu' not in trace:
         problems.append('the simulated close did not happen')
@@ -97,7 +109,8 @@ def check_closed(trace, log, problems):
 CASES = [
     # name, sdmc:/hwtest.txt, steps, check
     ('play-and-exit', None, START + EXIT, check_play_and_exit),
-    ('home-and-back', 'suspend 120', START + ['wait:4'], check_home_and_back),
+    ('home-and-back', 'suspend 120',
+     START + ['wait:4', 'shot:back', 'down:a', 'wait:2', 'shot:held', 'up:a'], check_home_and_back),
     ('close-in-game', 'close-game 180', START + ['wait:6'], check_closed),
     ('close-in-menu', 'close-menu 60', START + MENU + ['wait:6'], check_closed),
 ]
@@ -129,7 +142,7 @@ def run_case(name, hwtest, steps, check, rom):
     if not trace:
         problems.append('no trace: is this a `make HWTEST=1` build?')
     else:
-        check(trace, log, problems)
+        check(trace, log, problems, out)
     print('%-14s %s' % (name, 'PASS' if not problems else 'FAIL: ' + '; '.join(problems)))
     return not problems
 
