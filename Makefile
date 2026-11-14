@@ -34,7 +34,7 @@ APP_AUTHOR	:=	bubble2k16
 # so 1.03 is 1.0.3), which lets a CIA install as an upgrade of an older one.
 VERSION_MAJOR	:=	1
 VERSION_MINOR	:=	0
-VERSION_MICRO	:=	3
+VERSION_MICRO	:=	4
 ASSETS		:=	src/cores/virtuanes/assets
 ICON		:=	$(ASSETS)/icon.png
 TARGET		:=	virtuanes_3ds
