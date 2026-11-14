@@ -136,6 +136,14 @@ void gpu3dsWaitForPreviousFlush();
 
 void gpu3dsClearRenderTarget();
 void gpu3dsTransferToScreenBuffer(bool waitFor3D = true);
+
+// Sends the GPU state again if the app was suspended (HOME menu)
+// since the last call, and returns true if it did.
+bool gpu3dsRestoreLostState();
+
+#ifdef HWTEST3DS
+void gpu3dsHwtestClobberState();    // make HWTEST=1: what the HOME menu does to the GPU's state
+#endif
 void gpu3dsSwapVertexListForNextFrame(SVertexList *list);
 void gpu3dsSwapScreenBuffers();
 

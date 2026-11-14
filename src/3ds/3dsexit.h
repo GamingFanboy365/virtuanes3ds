@@ -6,6 +6,10 @@
 extern aptHookCookie hookCookie;
 extern int appExiting;
 
+// Counts the times the app came back from a suspension (the HOME menu
+// or another applet), for code that has state to restore afterwards.
+extern int appResumeCount;
+
 void setExitFlag(APT_HookType hook, void* param);
 void enableExitHook();
 

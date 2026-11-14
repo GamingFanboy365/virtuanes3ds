@@ -861,6 +861,16 @@ int menu3dsMenuSelectItem(bool (*itemChangedCallback)(int ID, int value))
             menu3dsDrawEverything();
         }
 
+        // Draw, and so swap, this frame too when the screens need it without
+        // any input: back from the HOME menu, or while the game's picture is
+        // still on its way to the top screen's two buffers.
+        static int resumesSeen = 0;
+        if (resumesSeen != appResumeCount || transferGameScreenCount)
+        {
+            resumesSeen = appResumeCount;
+            menu3dsDrawEverything();
+        }
+
         menu3dsSwapBuffersAndWaitForVBlank();
     }
 
