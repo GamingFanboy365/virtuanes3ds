@@ -58,6 +58,8 @@ tools/azahar/gdb.sh
 
 ### How the stereoscopic 3D works
 
+The design follows danielecuomo's [StereoScopeSystem](https://github.com/danielecuomo/StereoScopeSystem), a Master System emulator for the 3DS that shows SegaScope 3-D games in stereo the same way: it watches the glasses register alternate, keeps a picture per eye, and shows both with `gfxSet3D`. No code was copied; its emulator core and renderer are different.
+
 `PAD::Write` keeps the last OUT1 value, and `NES::EmulateFrame` samples it at scanline 120. Games set it in vblank for the next field, so the mid-frame value says which eye the frame is for. In `3dsimpl.cpp`, `impl3dsStereoUpdate` turns 3D on after 8 frames in a row alternate eyes, and off after 15 frames without a change. While 3D is on, each frame goes into its eye's texture. Each eye has two textures, one being written and one being drawn. The top screen then shows both eyes' latest pictures: `gpu3dsSetStereo` calls `gfxSet3D`, the right eye renders into the second half of `GPU3DS.frameBuffer`, and `gpu3dsTransferToScreenBuffer` sends both halves to the screen. With the 3D slider down, only the left eye is drawn. `impl3dsEmulationEnd` turns 3D off before the menus draw.
 
 ## Code that only runs on a real 3DS

@@ -223,3 +223,4 @@ Then build by using *make*.
 2. Authors of the Citra 3DS Emulator team. Without them, this project would have been extremely difficult.
 5. SG6000 for helping with debugging the nasty crashing bug.
 6. Fellow forummers on GBATemp for the bug reports and suggestions for improvements.
+7. danielecuomo's [StereoScopeSystem](https://github.com/danielecuomo/StereoScopeSystem), whose SegaScope 3-D support for the Master System inspired the Famicom 3D System support.
