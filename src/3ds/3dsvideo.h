@@ -59,6 +59,7 @@ void video3dsTransferFrameBufferToScreenAndSwap();
 // which will then be used to draw to the frame buffer later on.
 //-----------------------------------------------------------------------------
 void video3dsCopySoftwareBufferToTexture();
+void video3dsCopySoftwareBufferToTexture(SGPUTexture *texture);
 
 //-----------------------------------------------------------------------------
 // Frees up all buffers and textures.

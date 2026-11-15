@@ -31,6 +31,11 @@ jobs:
       - name: Mapper tests in Azahar
         run: tools/azahar/mappertest.py
 
+      # Famicom 3D System: a test ROM that alternates eyes, shown with
+      # Azahar's side-by-side 3D, with the 3D slider up and down.
+      - name: Stereoscopic 3D test in Azahar
+        run: tools/azahar/stereotest.py
+
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
@@ -49,6 +54,7 @@ jobs:
           path: |
             .azahar/smoketest/
             .azahar/mappertest/
+            .azahar/stereotest/
           include-hidden-files: true
           if-no-files-found: ignore
 

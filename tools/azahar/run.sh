@@ -18,6 +18,8 @@ Options:
                       "Nintendo 3DS" folder comes first, so "key:down key:a".)
   -s, --sd SRC:DEST   copy SRC to DEST on the emulated SD card (repeatable),
                       e.g. -s art/Pinball.png:3ds/virtuanes_3ds/boxart/Pinball.png
+  -c, --config FILE   append FILE to Azahar's qt-config.ini (headless only),
+                      e.g. a [Layout] section with render_3d and factor_3d
   -a, --app FILE      .3dsx to run (default: virtuanes_3ds.3dsx), or a .cia,
                       which is installed and then launched like from the Home Menu
   -o, --out DIR       where screenshots and the log go (default: .azahar/out)
@@ -54,6 +56,7 @@ APP="$ROOT/virtuanes_3ds.3dsx"
 OUT="$WORK/out"
 ROMS=()
 SD_FILES=()
+EXTRA_CONFIG=()
 GDB_PORT=""
 GUI=0
 TIMEOUT=120
@@ -63,6 +66,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         -r|--rom)     ROMS+=("$2"); shift 2 ;;
         -s|--sd)      SD_FILES+=("$2"); shift 2 ;;
+        -c|--config)  EXTRA_CONFIG+=("$2"); shift 2 ;;
         -a|--app)     APP="$2"; shift 2 ;;
         -o|--out)     OUT="$2"; shift 2 ;;
         -g|--gdb)
@@ -93,6 +97,11 @@ OUT="$(cd "$OUT" && pwd)"
 CONF="$CONFDIR/qt-config.ini"
 if [ "$GUI" = 0 ] || [ ! -f "$CONF" ]; then
     cp "$ROOT/tools/azahar/qt-config.ini" "$CONF"
+fi
+if [ "$GUI" = 0 ]; then
+    for extra in ${EXTRA_CONFIG[@]+"${EXTRA_CONFIG[@]}"}; do
+        cat "$extra" >>"$CONF"
+    done
 fi
 
 find "$SDMC" -maxdepth 1 -type f \( -iname '*.nes' -o -iname '*.fds' -o -iname '*.nsf' \) -delete

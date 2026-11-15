@@ -28,6 +28,7 @@ PAD::PAD( NES* parent ) : nes( parent )
 	excontroller_select = 0;
 	expad = NULL;
 	bStrobe = FALSE;
+	out1 = 0;
 	bSwapButton = FALSE;
 	bSwapPlayer = FALSE;
 	bZapperMode = FALSE;
@@ -52,6 +53,7 @@ void	PAD::Reset()
 {
 	pad1bit = pad2bit = 0;
 	bStrobe = FALSE;
+	out1 = 0;
 
 //	if( !bZapperMode ) {
 //		bZapperMode = FALSE;
@@ -634,6 +636,7 @@ BYTE	data = 0x00;
 void	PAD::Write( WORD addr, BYTE data )
 {
 	if( addr == 0x4016 ) {
+		out1 = (data>>1)&0x01;	// Famicom 3D System shutter
 		if( data&0x01 ) {
 			bStrobe = TRUE;
 		} else if( bStrobe ) {

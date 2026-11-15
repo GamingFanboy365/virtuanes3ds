@@ -51,6 +51,11 @@ public:
 
 	BOOL	IsZapperMode() { return bZapperMode; };
 
+	// Last value written to OUT1 ($4016 bit 1). On a Famicom this drives
+	// the Famicom 3D System shutter glasses: 0 = the next field is for the
+	// left eye, 1 = it is for the right eye.
+	BYTE	GetOut1() { return out1; }
+
 	// For VS-Unisystem
 	void	SetSwapPlayer( BOOL bSwap ) { bSwapPlayer = bSwap; }
 	void	SetSwapButton( BOOL bSwap ) { bSwapButton = bSwap; }
@@ -121,6 +126,7 @@ protected:
 
 	BOOL	bStrobe;
 	BOOL	bZapperMode;
+	BYTE	out1;
 
 	// For VS-Unisystem
 	INT	nVSSwapType;

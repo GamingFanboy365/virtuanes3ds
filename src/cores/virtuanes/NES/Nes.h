@@ -120,6 +120,10 @@ public:
 	void	SoundSetup();
 
 	INT	GetScanline()	{ return NES_scanline; }
+
+	// Famicom 3D System: the OUT1 value seen in the middle of the last
+	// emulated frame (0 = left eye field, 1 = right eye field).
+	INT	GetGlassesField()	{ return GlassesField; }
 	BOOL	GetZapperHit()	{ return bZapper; }
 	void	GetZapperPos( LONG&x, LONG&y )	{ x = ZapperX; y = ZapperY; }
 	void	SetZapperPos( LONG x, LONG y )	{ ZapperX = x; ZapperY = y; }
@@ -303,6 +307,7 @@ protected:
 	SQWORD	emul_cycles;
 
 	INT	NES_scanline;
+	INT	GlassesField;
 
 	INT	SAVERAM_SIZE;
 

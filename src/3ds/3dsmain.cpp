@@ -1115,6 +1115,7 @@ void emulatorLoop()
 	}
 
     TRACE3DS_LOG("leaving emulation: state=%d, appExiting=%d", emulator.emulatorState, appExiting);
+    impl3dsEmulationEnd();
     snd3dsStopPlaying();
     TRACE3DS_LOG("sound stopped");
 

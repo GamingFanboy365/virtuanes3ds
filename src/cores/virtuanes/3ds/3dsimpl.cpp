@@ -50,7 +50,9 @@
 #define SETTINGS_GLOBALINSERTCOIN1  1
 #define SETTINGS_GLOBALINSERTCOIN2  2 
 #define SETTINGS_INSERTCOIN1        3
-#define SETTINGS_INSERTCOIN2        4  
+#define SETTINGS_INSERTCOIN2        4
+#define SETTINGS_FAMICOM3D          5   // global: 0 = automatic stereoscopic 3D, 1 = off
+#define SETTINGS_FAMICOM3DSWAPEYES  6   // global: 1 = swap the left and right eyes
 
 //----------------------------------------------------------------------
 // Settings
@@ -142,6 +144,13 @@ SMenuItem optionsForSpriteFlicker[] =
     MENU_MAKE_LASTITEM  ()  
 };
 
+SMenuItem optionsForFamicom3D[] =
+{
+    MENU_MAKE_DIALOG_ACTION (0, "Automatic",    "Stereoscopic 3D when a game uses it"),
+    MENU_MAKE_DIALOG_ACTION (1, "Off",          "Show every frame, as on a TV"),
+    MENU_MAKE_LASTITEM  ()
+};
+
 SMenuItem optionMenu[] = {
     MENU_MAKE_HEADER1   ("GLOBAL SETTINGS"),
     MENU_MAKE_PICKER    (11000, "  Screen Stretch", "How would you like the final screen to appear?", optionsForStretch, DIALOGCOLOR_CYAN),
@@ -149,6 +158,10 @@ SMenuItem optionMenu[] = {
     MENU_MAKE_CHECKBOX  (15001, "  Hide text in bottom screen", 0),
     MENU_MAKE_DISABLED  (""),
     MENU_MAKE_CHECKBOX  (21000, "  Automatically save state on exit and load state on start", 0),
+    MENU_MAKE_DISABLED  (""),
+    MENU_MAKE_HEADER1   ("FAMICOM 3D SYSTEM"),
+    MENU_MAKE_PICKER    (16000, "  Stereoscopic 3D", "Games for the Famicom 3D System show a picture for each eye. Turn 3D on in the game (usually with SELECT) and raise the 3D slider.", optionsForFamicom3D, DIALOGCOLOR_CYAN),
+    MENU_MAKE_CHECKBOX  (16001, "  Swap left and right eyes", 0),
     MENU_MAKE_DISABLED  (""),
     MENU_MAKE_HEADER1   ("GAME-SPECIFIC SETTINGS"),
     MENU_MAKE_PICKER    (10000, "  Frameskip", "Try changing this if the game runs slow. Skipping frames help it run faster but less smooth.", optionsForFrameskip, DIALOGCOLOR_CYAN),
@@ -308,6 +321,81 @@ NES* nes = NULL;
 unsigned char linecolor[256];
 
 
+//---------------------------------------------------------
+// Famicom 3D System (stereoscopic 3D)
+//
+// Games for the Famicom 3D System shutter glasses draw the
+// left and right eye's pictures on alternate frames, and
+// tell the glasses which eye each frame is for through OUT1
+// ($4016 bit 1: 0 = left, 1 = right). See NES::GetGlassesField.
+//
+// Once OUT1 alternates every frame for a while, each frame
+// goes into its eye's texture instead of the usual screen
+// texture, and the top screen shows the two eyes' latest
+// pictures in stereoscopic 3D, or only the left eye's when
+// the 3D slider is down (or on a 2DS) so that the picture
+// doesn't flicker. When OUT1 stops alternating (the game's
+// 3D mode was turned off), it goes back to normal.
+//
+// Each eye has two textures: one being written by the
+// frame just emulated, and the eye's previous picture,
+// which is what gets drawn in the meantime.
+//---------------------------------------------------------
+#define STEREO_DETECT_FRAMES        8   // consecutive alternating frames to turn 3D on
+#define STEREO_RELEASE_FRAMES       15  // frames without alternation to turn it off
+
+SGPUTexture     *stereoEyeTexture[2][2] = { { NULL, NULL }, { NULL, NULL } };
+int             stereoEyeWriteIndex[2];     // texture the eye's next picture goes into
+int             stereoEyeReadyIndex[2];     // texture with the eye's latest picture, -1 if none yet
+bool            stereoDetected;
+int             stereoLastField;
+int             stereoAlternations;
+int             stereoSteadyFrames;
+bool            stereoLastFrameWasStereo;   // whether the last drawn frame went into an eye's texture
+
+void impl3dsStereoReset()
+{
+    stereoDetected = false;
+    stereoLastField = -1;
+    stereoAlternations = 0;
+    stereoSteadyFrames = 0;
+    stereoLastFrameWasStereo = false;
+    for (int eye = 0; eye < 2; eye++)
+    {
+        stereoEyeWriteIndex[eye] = 0;
+        stereoEyeReadyIndex[eye] = -1;
+    }
+}
+
+//---------------------------------------------------------
+// Looks at which eye the frame just emulated was for, and
+// returns true if the game is showing stereoscopic 3D.
+//---------------------------------------------------------
+bool impl3dsStereoUpdate(int field)
+{
+    if (stereoLastField >= 0 && field != stereoLastField)
+    {
+        stereoSteadyFrames = 0;
+        if (stereoAlternations < STEREO_DETECT_FRAMES)
+            stereoAlternations++;
+        if (stereoAlternations >= STEREO_DETECT_FRAMES)
+            stereoDetected = true;
+    }
+    else
+    {
+        // A game that slows down may show an eye twice, so this
+        // only turns 3D off after a while.
+        stereoAlternations = 0;
+        if (stereoSteadyFrames < STEREO_RELEASE_FRAMES)
+            stereoSteadyFrames++;
+        if (stereoSteadyFrames >= STEREO_RELEASE_FRAMES)
+            stereoDetected = false;
+    }
+    stereoLastField = field;
+    return stereoDetected;
+}
+
+
 
 //---------------------------------------------------------
 // Settings related to the emulator.
@@ -400,6 +488,20 @@ bool impl3dsInitializeCore()
     if (!video3dsInitializeSoftwareRendering(512, 256, GX_TRANSFER_FMT_RGB565))
         return false;
 
+    // The eyes' textures for the Famicom 3D System (0.250 MB each)
+    //
+    for (int eye = 0; eye < 2; eye++)
+        for (int i = 0; i < 2; i++)
+        {
+            stereoEyeTexture[eye][i] = gpu3dsCreateTextureInVRAM(512, 256, GPU_RGB565);
+            if (stereoEyeTexture[eye][i] == NULL)
+            {
+                printf ("Unable to allocate the stereoscopic textures\n");
+                return false;
+            }
+        }
+    impl3dsStereoReset();
+
 	// allocate all necessary vertex lists
 	//
     if (emulator.isReal3DS)
@@ -434,6 +536,14 @@ bool impl3dsInitializeCore()
 void impl3dsFinalize()
 {
     video3dsFinalize();
+
+    for (int eye = 0; eye < 2; eye++)
+        for (int i = 0; i < 2; i++)
+        {
+            if (stereoEyeTexture[eye][i])
+                gpu3dsDestroyTextureFromVRAM(stereoEyeTexture[eye][i]);
+            stereoEyeTexture[eye][i] = NULL;
+        }
 
 	if (nes) delete nes;
 }
@@ -530,6 +640,8 @@ bool impl3dsLoadROM(char *romFilePath)
 	TRACE3DS_LOG("reset");
 	nes->Reset();
 	TRACE3DS_LOG("reset done");
+
+	impl3dsStereoReset();
 
     // If this is a FDS game, enable the FDS menu.
     //
@@ -673,10 +785,10 @@ int lastWait = 0;
 #define WAIT_P3D		2
 
 
-void impl3dsRenderDrawTextureToFrameBuffer()
+// Draws one picture of the NES screen into the current
+// render target, stretched as the settings say.
+void impl3dsRenderDrawScreenTexture(SGPUTexture *texture)
 {
-	t3dsStartTiming(14, "Draw Texture");	
-
     // Draw a black colored rectangle covering the entire screen.
     //
 	switch (settings3DS.ScreenStretch)
@@ -687,7 +799,7 @@ void impl3dsRenderDrawTextureToFrameBuffer()
             gpu3dsDrawRectangle(328, 0, 400, 240, 0, 0x000000ff);
 
             gpu3dsSetTextureEnvironmentReplaceTexture0();
-            gpu3dsBindTextureMainScreen(video3dsGetPreviousScreenTexture(), GPU_TEXUNIT0);
+            gpu3dsBindTextureMainScreen(texture, GPU_TEXUNIT0);
 			gpu3dsAddQuadVertexes(72, 0, 328, 240, 8, 0, 264, 240, 0);
 			break;
 		case 1:
@@ -696,12 +808,12 @@ void impl3dsRenderDrawTextureToFrameBuffer()
             gpu3dsDrawRectangle(360, 0, 400, 240, 0, 0x000000ff);
 
             gpu3dsSetTextureEnvironmentReplaceTexture0();
-            gpu3dsBindTextureMainScreen(video3dsGetPreviousScreenTexture(), GPU_TEXUNIT0);
+            gpu3dsBindTextureMainScreen(texture, GPU_TEXUNIT0);
 			gpu3dsAddQuadVertexes(40, 0, 360, 240, 8.2, 0, 263.8, 240, 0);
 			break;
 		case 2:
             gpu3dsSetTextureEnvironmentReplaceTexture0();
-            gpu3dsBindTextureMainScreen(video3dsGetPreviousScreenTexture(), GPU_TEXUNIT0);
+            gpu3dsBindTextureMainScreen(texture, GPU_TEXUNIT0);
 			gpu3dsAddQuadVertexes(0, 0, 400, 240, 8.2, 0, 263.8, 240, 0);
 			break;
 		case 3:
@@ -710,16 +822,57 @@ void impl3dsRenderDrawTextureToFrameBuffer()
             gpu3dsDrawRectangle(360, 0, 400, 240, 0, 0x000000ff);
 
             gpu3dsSetTextureEnvironmentReplaceTexture0();
-            gpu3dsBindTextureMainScreen(video3dsGetPreviousScreenTexture(), GPU_TEXUNIT0);
+            gpu3dsBindTextureMainScreen(texture, GPU_TEXUNIT0);
 			gpu3dsAddQuadVertexes(40, 0, 360, 240, 8.2 + 8, 0 + 8, 263.8 - 8, 240 - 8, 0);
 			break;
 		case 4:
             gpu3dsSetTextureEnvironmentReplaceTexture0();
-            gpu3dsBindTextureMainScreen(video3dsGetPreviousScreenTexture(), GPU_TEXUNIT0);
+            gpu3dsBindTextureMainScreen(texture, GPU_TEXUNIT0);
 			gpu3dsAddQuadVertexes(0, 0, 400, 240, 8.2 + 8, 0 + 8, 263.8 - 8, 240 - 8, 0);
 			break;
 	}
     gpu3dsDrawVertexes();
+}
+
+
+void impl3dsRenderDrawTextureToFrameBuffer()
+{
+	t3dsStartTiming(14, "Draw Texture");
+
+    if (stereoLastFrameWasStereo)
+    {
+        // The latest picture of each eye. Until both eyes have
+        // one, show the one there is to both.
+        //
+        SGPUTexture *eyeTexture[2] = { NULL, NULL };
+        for (int eye = 0; eye < 2; eye++)
+            if (stereoEyeReadyIndex[eye] >= 0)
+                eyeTexture[eye] = stereoEyeTexture[eye][stereoEyeReadyIndex[eye]];
+        if (!eyeTexture[0])
+            eyeTexture[0] = eyeTexture[1];
+        if (!eyeTexture[1])
+            eyeTexture[1] = eyeTexture[0];
+
+        // With the 3D slider down (always on a 2DS), show only the
+        // left eye: showing every frame would flicker.
+        //
+        bool show3D = osGet3DSliderState() > 0;
+        gpu3dsSetStereo(show3D);
+
+        gpu3dsSetRenderTargetToTopFrameBufferEye(0);
+        impl3dsRenderDrawScreenTexture(eyeTexture[0]);
+        if (show3D)
+        {
+            gpu3dsSetRenderTargetToTopFrameBufferEye(1);
+            impl3dsRenderDrawScreenTexture(eyeTexture[1]);
+            gpu3dsSetRenderTargetToTopFrameBufferEye(0);
+        }
+    }
+    else
+    {
+        gpu3dsSetStereo(false);
+        impl3dsRenderDrawScreenTexture(video3dsGetPreviousScreenTexture());
+    }
 	t3dsEndTiming(14);
 
 	t3dsStartTiming(15, "Flush");
@@ -770,11 +923,47 @@ if (frameCount60 == 59)
 	}
 	t3dsEndTiming(10);
 
+	// Famicom 3D System: which eye this frame was for, if the
+	// game is showing stereoscopic 3D. (Not with controllers
+	// that use OUT1 for themselves, such as the keyboard.)
+	//
+	bool stereoFrame = false;
+	int eye = 0;
+	if (nes && settings3DS.OtherOptions[SETTINGS_FAMICOM3D] == 0 &&
+		nes->pad->GetExController() == PAD::EXCONTROLLER_NONE)
+	{
+		int field = nes->GetGlassesField();
+		stereoFrame = impl3dsStereoUpdate(field);
+		eye = settings3DS.OtherOptions[SETTINGS_FAMICOM3DSWAPEYES] ? field ^ 1 : field;
+	}
+	else if (stereoDetected || stereoLastField >= 0)
+	{
+		impl3dsStereoReset();
+	}
+
 	if (!skipDrawingFrame)
-        video3dsCopySoftwareBufferToTexture();
+	{
+		if (stereoFrame)
+			video3dsCopySoftwareBufferToTexture(stereoEyeTexture[eye][stereoEyeWriteIndex[eye]]);
+		else
+			video3dsCopySoftwareBufferToTexture();
+	}
 
 	if (!skipDrawingPreviousFrame)
-		impl3dsRenderDrawTextureToFrameBuffer();	
+		impl3dsRenderDrawTextureToFrameBuffer();
+
+	// What was just drawn came from the previous frames. The
+	// next frame draws this one's picture.
+	//
+	if (!skipDrawingFrame)
+	{
+		stereoLastFrameWasStereo = stereoFrame;
+		if (stereoFrame)
+		{
+			stereoEyeReadyIndex[eye] = stereoEyeWriteIndex[eye];
+			stereoEyeWriteIndex[eye] ^= 1;
+		}
+	}
 
 	skipDrawingPreviousFrame = skipDrawingFrame;
 	t3dsEndTiming(1);
@@ -789,6 +978,9 @@ if (frameCount60 == 59)
 //---------------------------------------------------------
 void impl3dsEmulationEnd()
 {
+	// The menus draw on the top screen in 2D.
+	gpu3dsSetStereo(false);
+
 	// We have to do this to clear the wait event
 	//
 	/*if (lastWait != 0 && emulator.isReal3DS)
@@ -966,7 +1158,9 @@ void impl3dsInitializeDefaultSettingsGlobal()
 {
 	settings3DS.GlobalVolume = 4;
 	settings3DS.OtherOptions[SETTINGS_GLOBALINSERTCOIN1] = 0;	
-	settings3DS.OtherOptions[SETTINGS_GLOBALINSERTCOIN2] = 0;	
+	settings3DS.OtherOptions[SETTINGS_GLOBALINSERTCOIN2] = 0;
+	settings3DS.OtherOptions[SETTINGS_FAMICOM3D] = 0;
+	settings3DS.OtherOptions[SETTINGS_FAMICOM3DSWAPEYES] = 0;
 }
 
 //---------------------------------------------------------
@@ -1112,6 +1306,8 @@ bool impl3dsReadWriteSettingsGlobal(bool writeMode)
     config3dsReadWriteInt32("ButtonMappingOpenEmulatorMenu_0=%d\n", &settings3DS.GlobalButtonHotkeyOpenMenu);
     config3dsReadWriteInt32("ButtonMappingInsertCoin1=%d\n", &settings3DS.OtherOptions[SETTINGS_GLOBALINSERTCOIN1]);
     config3dsReadWriteInt32("ButtonMappingInsertCoin2=%d\n", &settings3DS.OtherOptions[SETTINGS_GLOBALINSERTCOIN2]);
+    config3dsReadWriteInt32("Famicom3D=%d\n", &settings3DS.OtherOptions[SETTINGS_FAMICOM3D], 0, 1);
+    config3dsReadWriteInt32("Famicom3DSwapEyes=%d\n", &settings3DS.OtherOptions[SETTINGS_FAMICOM3DSWAPEYES], 0, 1);
 
     // All new options should come here!
 
@@ -1225,6 +1421,8 @@ bool impl3dsCopyMenuToOrFromSettings(bool copyMenuToSettings)
     UPDATE_SETTINGS(settings3DS.UseGlobalTurbo, -1, 20001);
     UPDATE_SETTINGS(settings3DS.UseGlobalVolume, -1, 20002);
     UPDATE_SETTINGS(settings3DS.AutoSavestate, -1, 21000);
+    UPDATE_SETTINGS(settings3DS.OtherOptions[SETTINGS_FAMICOM3D], -1, 16000);
+    UPDATE_SETTINGS(settings3DS.OtherOptions[SETTINGS_FAMICOM3DSWAPEYES], -1, 16001);
 
     UPDATE_SETTINGS(settings3DS.UseGlobalEmuControlKeys, -1, 50003);
     if (settings3DS.UseGlobalButtonMappings || copyMenuToSettings)
