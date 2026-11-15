@@ -241,6 +241,13 @@ void impl3dsEmulationEnd();
 
 
 //---------------------------------------------------------
+// Why the last impl3dsLoadROM failed, for the user ("" if
+// the core didn't say).
+//---------------------------------------------------------
+const char *impl3dsGetLoadROMError();
+
+
+//---------------------------------------------------------
 // This is called when the bottom screen is touched
 // during emulation, and the emulation engine is ready
 // to display the pause menu.

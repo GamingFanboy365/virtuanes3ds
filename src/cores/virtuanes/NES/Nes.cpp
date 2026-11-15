@@ -248,7 +248,8 @@ NES::NES( const char* fname )
 		}
 		if (rom->error)
 		{
-			error = "Loading ROM failed.";
+			// Keep the ROM loader's reason (a static string, not freed with rom).
+			error = rom->error[0] ? rom->error : (char *)"Loading ROM failed.";
 			goto has_error;
 		}
 

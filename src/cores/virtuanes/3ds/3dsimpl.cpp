@@ -592,8 +592,17 @@ void impl3dsOutputSoundSamples(int numberOfSamples, short *leftSamples, short *r
 // This is called when a ROM needs to be loaded and the
 // emulator engine initialized.
 //---------------------------------------------------------
+static char loadROMError[256] = "";
+
+const char *impl3dsGetLoadROMError()
+{
+	return loadROMError;
+}
+
 bool impl3dsLoadROM(char *romFilePath)
 {
+	loadROMError[0] = 0;
+
 	if (nes)
     {
 		delete nes;
@@ -604,7 +613,10 @@ bool impl3dsLoadROM(char *romFilePath)
 	nes = new NES(romFilePath);
 	TRACE3DS_LOG("new NES: error=%s, mapper %d", nes->error ? nes->error : "none", nes->error ? -1 : nes->rom->GetMapperNo());
 	if (nes->error)
+	{
+		snprintf(loadROMError, sizeof(loadROMError), "%s", nes->error);
 		return false;
+	}
 
 	//nes->ppu->SetScreenPtr( NULL, linecolor );
 	nes->ppu->SetScreenRGBAPtr( video3dsGetCurrentSoftwareBuffer(), linecolor );
