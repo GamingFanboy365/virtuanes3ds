@@ -101,6 +101,8 @@ void gpu3dsFinalize();
 
 void gpu3dsSetParallaxBarrier(bool enable);
 void gpu3dsCheckSlider();
+void gpu3dsSetStereo(bool enable);
+bool gpu3dsIsStereo();
 
 void gpu3dsAllocVertexList(SVertexList *list, int sizeInBytes, int vertexSize,
     u8 totalAttributes, u64 attributeFormats);
@@ -128,6 +130,7 @@ void gpu3dsLoadShader(int shaderIndex, u32 *shaderBinary, int size, int geometry
 void gpu3dsUseShader(int shaderIndex);
 
 void gpu3dsSetRenderTargetToTopFrameBuffer();
+void gpu3dsSetRenderTargetToTopFrameBufferEye(int eye);
 void gpu3dsSetRenderTargetToTexture(SGPUTexture *texture, SGPUTexture *depthTexture);
 void gpu3dsSetRenderTargetToTextureSpecific(SGPUTexture *texture, SGPUTexture *depthTexture, int addressOffset, int width, int height);
 

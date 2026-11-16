@@ -43,6 +43,27 @@ Images at those sizes load fastest and look best; larger ones are scaled down to
 
 Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on the SD card. With --roms, the images are named after your ROM files, and ROMs named differently from the pack's images (Tennis.nes against "Tennis (Japan, USA)") are matched by title, which covers the other way round too.
 
+### Famicom 3D System (stereoscopic 3D)
+
+Games made for Nintendo's Famicom 3D System shutter glasses show in stereoscopic 3D on the 3DS's top screen. These games draw the left and right eye's pictures on alternate frames and tell the glasses which eye each frame is for. VirtuaNES notices this and shows each eye its own picture:
+
+| Game | System | Turning 3D on |
+|---|---|---|
+| Attack Animal Gakuen | Famicom | SELECT |
+| Cosmic Epsilon | Famicom | SELECT |
+| Highway Star | Famicom | SELECT |
+| JJ: Tobidase Daisakusen Part II | Famicom | SELECT |
+| Falsion | Famicom Disk System | SELECT |
+| Famicom Grand Prix II: 3D Hot Rally | Famicom Disk System | SELECT |
+| Fuuun Shourin Ken: Ankoku no Maou | Famicom Disk System | Hold A and press START on the title screen |
+| Tobidase Daisakusen | Famicom Disk System | SELECT |
+
+1. Turn on the game's 3D mode as in the table, and raise the 3D slider. 3D starts a moment after the game switches to it, and goes off again when the game's 3D mode is turned off.
+2. With the 3D slider down, and on a 2DS, you see the left eye's picture only, so the game doesn't flicker as it would on a TV.
+3. The Options tab in the in-game menu has two settings under FAMICOM 3D SYSTEM: "Stereoscopic 3D" can be turned off, to see every frame as the game draws it, and "Swap left and right eyes" helps if the depth looks inside out.
+
+Their Western versions, Rad Racer (Highway Star) and 3-D WorldRunner (Tobidase Daisakusen), use red and blue glasses instead and play the same as any other game.
+
 ### When in-game,
 
 1. Tap the bottom screen for the menu.
@@ -71,6 +92,9 @@ Then copy the boxart and snaps folders from previews to /3ds/virtuanes_3ds/ on t
 ## Change History
 
 *VirtuaNES:*
+
+### Unreleased
+- Stereoscopic 3D for games made for the Famicom 3D System: each eye sees its own picture on the 3D screen. See [Famicom 3D System](#famicom-3d-system-stereoscopic-3d).
 
 ### v1.04
 - Fixed the game's picture freezing after going to the HOME menu and back.
@@ -199,3 +223,4 @@ Then build by using *make*.
 2. Authors of the Citra 3DS Emulator team. Without them, this project would have been extremely difficult.
 5. SG6000 for helping with debugging the nasty crashing bug.
 6. Fellow forummers on GBATemp for the bug reports and suggestions for improvements.
+7. danielecuomo's [StereoScopeSystem](https://github.com/danielecuomo/StereoScopeSystem), whose SegaScope 3-D support for the Master System inspired the Famicom 3D System support.

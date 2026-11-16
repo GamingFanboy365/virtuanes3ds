@@ -192,6 +192,16 @@ void video3dsTransferFrameBufferToScreenAndSwap()
 //-----------------------------------------------------------------------------
 void video3dsCopySoftwareBufferToTexture()
 {
+    video3dsCopySoftwareBufferToTexture(videoScreenTexture[videoBufferIndex]);
+}
+
+//-----------------------------------------------------------------------------
+// The same, into a texture of the caller's (of the size and format given to
+// video3dsInitializeSoftwareRendering, in VRAM), such as one eye's picture
+// of a stereoscopic game.
+//-----------------------------------------------------------------------------
+void video3dsCopySoftwareBufferToTexture(SGPUTexture *texture)
+{
     t3dsStartTiming(11, "FlushDataCache");
     GSPGPU_FlushDataCache(videoSoftwareBuffer[videoBufferIndex], videoBufferWidth * videoBufferHeight * videoSoftwareBufferBitDepth / 8);
     t3dsEndTiming(11);
@@ -199,7 +209,7 @@ void video3dsCopySoftwareBufferToTexture()
     t3dsStartTiming(12, "DisplayTransfer");
     GX_DisplayTransfer(
         (uint32 *)(videoSoftwareBuffer[videoBufferIndex]), GX_BUFFER_DIM(videoBufferWidth, videoBufferHeight),
-        (uint32 *)(videoScreenTexture[videoBufferIndex]->PixelData), GX_BUFFER_DIM(videoBufferWidth, videoBufferHeight),
+        (uint32 *)(texture->PixelData), GX_BUFFER_DIM(videoBufferWidth, videoBufferHeight),
         GX_TRANSFER_OUT_TILED(1) |
         GX_TRANSFER_FLIP_VERT(1) |
         GX_TRANSFER_IN_FORMAT(videoSoftwareBufferFormat) |

@@ -137,6 +137,7 @@ NES::NES( const char* fname )
 {
 	DEBUGOUT( "VirtuaNES - NES Emulator for Win32 by Norix (C)2001\n" );
 
+	GlassesField = 0;
 	m_bDiskThrottle = FALSE;
 	m_CommandRequest = 0;
 
@@ -247,7 +248,8 @@ NES::NES( const char* fname )
 		}
 		if (rom->error)
 		{
-			error = "Loading ROM failed.";
+			// Keep the ROM loader's reason (a static string, not freed with rom).
+			error = rom->error[0] ? rom->error : (char *)"Loading ROM failed.";
 			goto has_error;
 		}
 
@@ -443,6 +445,7 @@ void	NES::Reset()
 
 	DEEMPH_Previous = -1;
 
+	GlassesField = 0;
 	m_bDiskThrottle = FALSE;
 
 	SetRenderMethod( PRE_RENDER );
@@ -512,6 +515,7 @@ void	NES::SoftReset()
 		mapper->Reset();
 	}
 
+	GlassesField = 0;
 	m_bDiskThrottle = FALSE;
 
 	base_cycles = emul_cycles = 0;
@@ -751,6 +755,13 @@ void	NES::EmulateFrame( BOOL bDraw )
 			}
 		*/
 
+			// Famicom 3D System: games set the shutter for the next field
+			// during vblank, so the value mid-frame tells which eye this
+			// frame is for.
+			if( scanline == 120 ) {
+				GlassesField = pad->GetOut1();
+			}
+
 			scanline++;
 			NES_scanline = scanline;
 		}
@@ -867,6 +878,13 @@ void	NES::EmulateFrame( BOOL bDraw )
 				impl3dsRenderStep1TransferNESScreenToTexture();
 			}
 */
+
+			// Famicom 3D System: games set the shutter for the next field
+			// during vblank, so the value mid-frame tells which eye this
+			// frame is for.
+			if( scanline == 120 ) {
+				GlassesField = pad->GetOut1();
+			}
 
 			scanline++;
 			NES_scanline = scanline;

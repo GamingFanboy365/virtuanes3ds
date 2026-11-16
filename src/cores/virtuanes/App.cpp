@@ -72,12 +72,26 @@ void	CApp::LoadErrorString()
 	}*/
 }
 
+// The Windows version loads these from its resources. Some are used as
+// format strings: IDS_ERROR_OPEN takes the file name (%s), and
+// IDS_ERROR_UNSUPPORTMAPPER the mapper number (%d).
 CHAR*	CApp::GetErrorString( INT nID )
 {
-	/*for( INT i = 0; m_ErrorStringTableID[i]; i++ ) {
-		if( m_ErrorStringTableID[i] == nID )
-			return	m_ErrorString[i];
-	}*/
-	return	"";	// NULL �X�g�����O�Ƃ��ēn��
+	switch( nID ) {
+		case IDS_ERROR_OPEN:			return	"Can't open %s";
+		case IDS_ERROR_READ:			return	"Can't read the file.";
+		case IDS_ERROR_WRITE:			return	"Can't write the file.";
+		case IDS_ERROR_OUTOFMEMORY:		return	"Out of memory.";
+		case IDS_ERROR_UNSUPPORTFORMAT:	return	"Unknown file format.";
+		case IDS_ERROR_INVALIDNESHEADER:	return	"Invalid NES header: the ROM is smaller than its header says.";
+		case IDS_ERROR_SMALLFILE:		return	"The file is too small.";
+		case IDS_ERROR_UNSUPPORTMAPPER:	return	"Mapper %d isn't supported.";
+		case IDS_ERROR_NODISKBIOS:		return	"FDS BIOS not found. Put it in /3ds/virtuanes_3ds/bios/disksys.rom";
+		case IDS_ERROR_UNSUPPORTDISK:	return	"Disks with more than 8 sides aren't supported.";
+		case IDS_ERROR_ILLEGALDISKSIZE:	return	"The FDS image is smaller than its number of disk sides needs (65500 bytes each).";
+		case IDS_ERROR_ILLEGALHEADER:	return	"Invalid header.";
+		case IDS_ERROR_UNKNOWN:			return	"Unknown error.";
+	}
+	return	"Error.";	// NULL �X�g�����O�Ƃ��ēn��
 }
 

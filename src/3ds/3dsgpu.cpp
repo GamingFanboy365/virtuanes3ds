@@ -149,21 +149,48 @@ void gpu3dsSetParallaxBarrier(bool enable)
 
 
 //---------------------------------------------------------
-// Keeps the parallax barrier off regardless of the 3D slider.
+// Keeps the parallax barrier off regardless of the 3D slider,
+// unless the top screen is in stereoscopic mode.
 //
-// The top screen runs in 2D mode (gfxSet3D(false)), so there
-// are no right-eye framebuffers to manage. (With libctru 1.x
-// this used to alias the right-eye framebuffers to the left
-// ones instead.)
+// Normally the top screen runs in 2D mode (gfxSet3D(false)),
+// so there are no right-eye framebuffers to manage. (With
+// libctru 1.x this used to alias the right-eye framebuffers
+// to the left ones instead.) gpu3dsSetStereo(true) turns on
+// stereoscopic mode, for games made for the Famicom 3D System;
+// the barrier then follows the slider.
 //---------------------------------------------------------
 float prevSliderVal = -1;
+static bool topScreenStereo = false;
 void gpu3dsCheckSlider()
 {
     float sliderVal = *(float*)0x1FF81080;
 
     if (sliderVal != prevSliderVal)
-        gpu3dsSetParallaxBarrier(false);
+        gpu3dsSetParallaxBarrier(topScreenStereo && sliderVal > 0);
     prevSliderVal = sliderVal;
+}
+
+
+//---------------------------------------------------------
+// Turns stereoscopic 3D on the top screen on or off.
+//
+// While it is on, draw each eye into its own top frame
+// buffer (gpu3dsSetRenderTargetToTopFrameBufferEye), and
+// gpu3dsTransferToScreenBuffer sends both to the screen.
+// The change shows from the next gpu3dsSwapScreenBuffers.
+//---------------------------------------------------------
+void gpu3dsSetStereo(bool enable)
+{
+    if (enable == topScreenStereo)
+        return;
+    topScreenStereo = enable;
+    gfxSet3D(enable);
+    prevSliderVal = -1;         // gpu3dsCheckSlider sets the barrier again
+}
+
+bool gpu3dsIsStereo()
+{
+    return topScreenStereo;
 }
 
 void gpu3dsEnableDepthTestAndWriteColorAlphaOnly()
@@ -865,12 +892,17 @@ supports only the following frame buffer format types:
 const uint32 GPUREG_COLORBUFFER_FORMAT_VALUES[5] = { 0x0002, 0x00010001, 0x00020000, 0x00030000, 0x00040000 };
 
 
+// Which top frame buffer is the render target when
+// GPU3DS.currentRenderTarget is NULL: 0 = left eye, 1 = right eye.
+static int topFrameBufferEye = 0;
+
 void gpu3dsInitializeRenderTargetToTopFrameBuffer()
 {
     GPU_SetFloatUniform(GPU_VERTEX_SHADER, renderTargetVertexShaderRegister, (u32 *)GPU3DS.projectionTopScreen, 4);
     GPU_SetFloatUniform(GPU_GEOMETRY_SHADER, renderTargetGeometryShaderRegister, (u32 *)GPU3DS.projectionTopScreen, 4);
 
     GPU3DS.currentRenderTarget = NULL;
+    topFrameBufferEye = 0;
 
     GPU_SetViewport(
         //(u32 *)osConvertVirtToPhys(GPU3DS.frameDepthBuffer),
@@ -882,8 +914,38 @@ void gpu3dsInitializeRenderTargetToTopFrameBuffer()
 }
 
 
+//---------------------------------------------------------
+// Renders into the left (0) or right (1) eye's top frame
+// buffer. GPU3DS.frameBuffer holds room for both: the right
+// eye's buffer follows the left eye's.
+//---------------------------------------------------------
+void gpu3dsSetRenderTargetToTopFrameBufferEye(int eye)
+{
+    if (GPU3DS.currentRenderTarget == NULL && topFrameBufferEye == eye)
+        return;
+
+    GPU_SetFloatUniform(GPU_VERTEX_SHADER, renderTargetVertexShaderRegister, (u32 *)GPU3DS.projectionTopScreen, 4);
+    GPU_SetFloatUniform(GPU_GEOMETRY_SHADER, renderTargetGeometryShaderRegister, (u32 *)GPU3DS.projectionTopScreen, 4);
+
+    GPU3DS.currentRenderTarget = NULL;
+    topFrameBufferEye = eye;
+
+    GPU_SetViewport(
+        GPU3DS.frameDepthBuffer == NULL ? NULL : (u32 *)osConvertVirtToPhys(GPU3DS.frameDepthBuffer),
+        (u32 *)osConvertVirtToPhys(&GPU3DS.frameBuffer[eye * 240 * 400]),
+        0, 0, 240, 400);
+
+    GPUCMD_AddSingleParam(0x000F0117, GPUREG_COLORBUFFER_FORMAT_VALUES[GPU3DS.frameBufferFormat]); //color buffer format
+}
+
+
 void gpu3dsSetRenderTargetToTopFrameBuffer()
 {
+    if (topFrameBufferEye != 0)
+    {
+        gpu3dsSetRenderTargetToTopFrameBufferEye(0);
+        return;
+    }
     if (GPU3DS.currentRenderTarget != NULL)
     {
         GPU_SetFloatUniform(GPU_VERTEX_SHADER, renderTargetVertexShaderRegister, (u32 *)GPU3DS.projectionTopScreen, 4);
@@ -1141,6 +1203,15 @@ void gpu3dsTransferToScreenBuffer(bool waitFor3D)
         GX_BUFFER_DIM(240, 400),
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FRAMEBUFFER_FORMAT_VALUES[GPU3DS.frameBufferFormat]) |
         GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_SCREEN_FORMAT_VALUES[GPU3DS.screenFormat]));
+
+    // In stereoscopic mode the right eye's frame buffer follows
+    // the left eye's (see gpu3dsSetRenderTargetToTopFrameBufferEye).
+    if (topScreenStereo)
+        GX_DisplayTransfer(&GPU3DS.frameBuffer[240 * 400], GX_BUFFER_DIM(240, 400),
+            (u32 *)gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL),
+            GX_BUFFER_DIM(240, 400),
+            GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FRAMEBUFFER_FORMAT_VALUES[GPU3DS.frameBufferFormat]) |
+            GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_SCREEN_FORMAT_VALUES[GPU3DS.screenFormat]));
 }
 
 void gpu3dsSwapScreenBuffers()

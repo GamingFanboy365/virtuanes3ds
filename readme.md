@@ -6,6 +6,8 @@ This 3DS version also fixes a few bugs from VirtuaNES's MMC5 mappers and even pl
 
 This is a fork of bubble2k16's [emus3ds](https://github.com/bubble2k16/emus3ds), narrowed down to the VirtuaNES core. Download the `.cia` or `.3dsx` from the [Releases](https://github.com/GamingFanboy365/virtuanes3ds/releases) page, and see [readme-virtuanes.md](readme-virtuanes.md) for installation, usage and the change history.
 
+Games made for the Famicom 3D System shutter glasses (Highway Star, 3D Hot Rally, Cosmic Epsilon and others) show in stereoscopic 3D on the 3DS's top screen; see [readme-virtuanes.md](readme-virtuanes.md#famicom-3d-system-stereoscopic-3d).
+
 While you browse the ROM list, the top screen can show box art and a screenshot of the highlighted game. NES boxes, landscape Famicom covers and square Famicom Disk System covers all fit; [readme-virtuanes.md](readme-virtuanes.md#box-art-and-screenshot-previews) explains where the images go and how `tools/make_previews.py` resizes them.
 
 ![alt tag](https://github.com/bubble2k16/emus3ds/blob/master/screenshots/VirtuaNES%20-%20Gradius%20II.bmp)
@@ -17,6 +19,8 @@ While you browse the ROM list, the top screen can show box art and a screenshot 
 The code builds with a current devkitARM (libctru 2.x). If you have devkitPro installed, run `make`, which produces `virtuanes_3ds.3dsx` and `virtuanes_3ds.cia`.
 
 Without a local devkitPro, `tools/build.sh` runs the same `make` inside the official `devkitpro/devkitarm` Docker image and passes its arguments through, so `tools/build.sh clean` works too.
+
+On an ARM machine such as a Mac with Apple silicon, set `DOCKER_DEFAULT_PLATFORM=linux/amd64` for `tools/build.sh` and the `tools/azahar` scripts. Docker then runs the x86 images: the bundled `makerom` that makes the `.cia` is an x86 program, and the `linuxserver/azahar` image has no ARM build.
 
 Publishing a GitHub release builds and tests its tag in CI, then attaches the `.cia`, `.3dsx`, `.smdh`, title image, an SD card zip and their checksums to the release; `tools/package_release.sh` does the packaging and also works locally.
 
@@ -49,6 +53,14 @@ tools/azahar/gdb.sh
 `tools/azahar/smoketest.py` checks the whole setup end to end. It builds a tiny test ROM that shows a blue screen and turns it red while A is held, runs it in Azahar and checks the screenshots.
 
 `tools/azahar/mappertest.py` does the same for mappers: it generates a test ROM per mapper whose code sets the mapper's registers and checks what the CPU and PPU then see (every PRG and CHR bank starts with its own number) and how the nametables are mirrored. The screen turns green when every check passes, and red otherwise. Pass mapper numbers to run only those, e.g. `tools/azahar/mappertest.py 210`.
+
+`tools/azahar/stereotest.py` checks the Famicom 3D System support. Its test ROM flips OUT1 (`$4016` bit 1, which tells the shutter glasses which eye the next frame is for) every frame and draws the left eye's frames red and the right eye's blue. The script runs it with Azahar's side-by-side 3D mode, where the left half of the top screen shows the left eye. It checks that each eye gets its own colour with the 3D slider up, that the picture goes back to 2D when the ROM stops flipping OUT1, and that only the left eye shows with the slider down. `run.sh -c FILE` is how it passes Azahar those settings.
+
+### How the stereoscopic 3D works
+
+The design follows danielecuomo's [StereoScopeSystem](https://github.com/danielecuomo/StereoScopeSystem), a Master System emulator for the 3DS that shows SegaScope 3-D games in stereo the same way: it watches the glasses register alternate, keeps a picture per eye, and shows both with `gfxSet3D`. No code was copied; its emulator core and renderer are different.
+
+`PAD::Write` keeps the last OUT1 value, and `NES::EmulateFrame` samples it at scanline 120. Games set it in vblank for the next field, so the mid-frame value says which eye the frame is for. In `3dsimpl.cpp`, `impl3dsStereoUpdate` turns 3D on after 8 frames in a row alternate eyes, and off after 15 frames without a change. While 3D is on, each frame goes into its eye's texture. Each eye has two textures, one being written and one being drawn. The top screen then shows both eyes' latest pictures: `gpu3dsSetStereo` calls `gfxSet3D`, the right eye renders into the second half of `GPU3DS.frameBuffer`, and `gpu3dsTransferToScreenBuffer` sends both halves to the screen. With the 3D slider down, only the left eye is drawn. `impl3dsEmulationEnd` turns 3D off before the menus draw.
 
 ## Code that only runs on a real 3DS
 
