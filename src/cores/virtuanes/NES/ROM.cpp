@@ -58,6 +58,44 @@ static struct CHINF moo[] =
 
 
 //
+// Two-part FDS games come as two images. Joining those ("cat a.fds b.fds")
+// makes one image with all the sides, but if they have headers, the second
+// one's ends up between the sides. Takes such headers out, and corrects the
+// number of sides in the first one.
+//
+static void RemoveJoinedFDSHeaders( LPBYTE image, LONG& size )
+{
+	const LONG	HEADER_SIZE = 16, SIDE_SIZE = 65500;
+
+	if( size < HEADER_SIZE+SIDE_SIZE )
+		return;
+	BOOL	bHeader = ::memcmp( image, "FDS\x1A", 4 ) == 0;
+	if( !bHeader && ::memcmp( image, "\x01*NINTENDO-HVC*", 15 ) != 0 )
+		return;
+
+	LONG	src = bHeader ? HEADER_SIZE : 0;
+	LONG	dst = src;
+	INT	sides = 0, removed = 0;
+	while( size-src >= SIDE_SIZE ) {
+		if( sides && size-src >= HEADER_SIZE+SIDE_SIZE && ::memcmp( image+src, "FDS\x1A", 4 ) == 0 ) {
+			src += HEADER_SIZE;
+			removed++;
+		}
+		if( src != dst )
+			::memmove( image+dst, image+src, SIDE_SIZE );
+		src += SIDE_SIZE;
+		dst += SIDE_SIZE;
+		sides++;
+	}
+
+	if( removed ) {
+		size = dst;
+		if( bHeader )
+			image[4] = (BYTE)sides;
+	}
+}
+
+//
 // ƒRƒ“ƒXƒgƒ‰ƒNƒ^
 //
 ROM::ROM( const char* fname )
@@ -125,6 +163,8 @@ LONG	FileSize;
 		}
 
 		FCLOSE( fp );
+
+		RemoveJoinedFDSHeaders( temp, FileSize );
 
 		// �w�b�_�R�s�[
 		::memcpy( &header, temp, sizeof(NESHEADER) );

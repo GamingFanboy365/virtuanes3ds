@@ -94,5 +94,40 @@ protected:
 
 	void	MechanicalSound( INT type );
 
+	// Automatic disk swap (Config.emulator.bAutoDiskSwap)
+	enum	{
+		AUTOSWAP_POLL_FRAMES  = 20,	// frames of polling $4032 before ejecting
+		AUTOSWAP_POLL_GAP     = 60,	// frames without a poll that end it
+		AUTOSWAP_EJECT_FRAMES = 60,	// how long the drive stays empty
+		AUTOSWAP_READ_FRAMES  = 200,	// how long the game has to read the disk
+		AUTOSWAP_POLLERS      = 8,
+	};
+	enum	{
+		POLLER_COUNTING = 0,
+		POLLER_TRIED,		// the disk was swapped, waiting for a read
+		POLLER_IGNORED,		// there was none: not waiting for a swap
+	};
+	// Code that polls $4032, by its address
+	struct	POLLER {
+		WORD	pc;		// 0: unused
+		BYTE	polled;		// in this frame
+		BYTE	state;
+		INT	frames;		// with polls
+		INT	gap;		// frames since the last poll
+	};
+	POLLER	swap_pollers[AUTOSWAP_POLLERS];
+	BYTE	swap_started;	// a disk was read since power-on
+	BYTE	swap_next_side;
+	INT	swap_eject_timer;
+	INT	swap_read_timer;
+
+	BOOL	IsAutoSwap();
+	void	AutoSwapReset();
+	void	AutoSwapSetSide( BYTE side );
+	void	AutoSwapPoll();
+	void	AutoSwapFindSide();
+	void	AutoSwapInsert();
+	void	AutoSwapVSync();
+
 private:
 };

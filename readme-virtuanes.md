@@ -26,6 +26,17 @@ Download the latest version from the [Releases](https://github.com/GamingFanboy3
 1. To load .FDS games, make sure that you get the FDS BIOS.
 2. Rename the BIOS to disksys.rom and place it in /3ds/virtuanes_3ds/bios/disksys.rom
 
+### Swapping disk sides
+
+When a Famicom Disk System game asks for another side, VirtuaNES puts it in by itself, after a second or two. To do it yourself instead, turn off "Swap disk sides automatically" under FAMICOM DISK SYSTEM in the Options tab; then, or if it doesn't work in a game, tap the bottom screen and use Choose Disk in the Emulator tab.
+
+For games in two parts that go together, such as Famicom Mukashibanashi: Shin Onigashima and Yuuyuuki, join the two images into one and load that:
+
+    cat zenpen.fds kouhen.fds > merged.fds          (macOS, Linux)
+    copy /b zenpen.fds + kouhen.fds merged.fds      (Windows)
+
+Images with and without headers both work, with no need to edit the headers. The swaps between the two parts are automatic too; Choose Disk calls the second part Disk 2.
+
 ### Box art and screenshot previews
 
 While you browse the ROM list, at start-up or in the in-game menu's Select ROM tab, the top screen can show box art and a screenshot of the highlighted game. Put them on your SD card as PNG files named like the ROM, without its extension, in the boxart and snaps folders inside /3ds/virtuanes_3ds (for both the CIA and the Homebrew Launcher version):
@@ -94,6 +105,7 @@ Their Western versions, Rad Racer (Highway Star) and 3-D WorldRunner (Tobidase D
 *VirtuaNES:*
 
 ### Unreleased
+- Famicom Disk System games swap disk sides automatically, and two-part games can be joined into one image. See [Swapping disk sides](#swapping-disk-sides).
 - Stereoscopic 3D for games made for the Famicom 3D System: each eye sees its own picture on the 3D screen. See [Famicom 3D System](#famicom-3d-system-stereoscopic-3d).
 
 ### v1.04
