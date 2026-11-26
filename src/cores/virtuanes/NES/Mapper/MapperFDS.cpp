@@ -99,6 +99,9 @@ DEBUGOUT( "GAME  ID=%08X\n", nes->rom->GetGameID() );
 
 	bDiskThrottle = FALSE;
 	DiskThrottleTime = 0;
+
+	swap_started = 0;
+	AutoSwapReset();
 }
 
 BYTE	Mapper020::ExRead( WORD addr )
@@ -169,6 +172,10 @@ BYTE	data = addr>>8;
 			}
 			break;
 		case	0x4032:	// Disk status
+			// The drive is idle: the game isn't waiting for a transfer.
+			if( !irq_transfer && (drive_reset || !disk_motor_mode) )
+				AutoSwapPoll();
+
 			data = 0x40;
 			data |= disk_eject?0x01:0x00;
 			data |= disk_eject?0x04:0x00;
@@ -286,6 +293,7 @@ void	Mapper020::ExWrite( WORD addr, BYTE data )
 					case	BLOCK_READY:
 						block_mode = BLOCK_VOLUME_LABEL;
 						point = 0;
+						AutoSwapFindSide();
 						break;
 					case	BLOCK_VOLUME_LABEL:
 						block_mode = BLOCK_FILE_AMOUNT;
@@ -338,6 +346,12 @@ void	Mapper020::ExWrite( WORD addr, BYTE data )
 
 			// ƒfƒBƒXƒNƒ‚[ƒ^[‚ÌƒRƒ“ƒgƒ[ƒ‹
 			disk_motor_mode = data & 0x01;
+
+			// The game is about to use the disk.
+			if( swap_eject_timer > 0 && disk_motor_mode && !drive_reset ) {
+				AutoSwapInsert();
+				disk_eject = 0;
+			}
 			if( !(data & 0x01) ) {
 				if( sound_seekend_timer >= 0 ) {
 					sound_seekend_timer = -1;
@@ -410,6 +424,8 @@ void	Mapper020::HSync( INT scanline )
 
 void	Mapper020::VSync()
 {
+	AutoSwapVSync();
+
 	if( disk && disk_eject ) {
 		if( disk_mount_count > 120 ) {
 			disk_eject = 0;
@@ -455,6 +471,203 @@ void	Mapper020::VSync()
 	}
 }
 
+//
+// Automatic disk swap
+//
+// Games ask for a disk side in two ways, and often both:
+//
+// - They read the disk through the BIOS, whose CheckDiskHeader ($E445)
+//   compares 10 bytes of the disk's header (maker, game, version, side
+//   and disk number; $FF matches anything) with the ones ($00) points
+//   to. AutoSwapFindSide puts in the side that matches as the BIOS
+//   starts reading the header.
+// - They ask the player to swap the disk, and poll the drive status
+//   ($4032) until the disk is out and then in again. AutoSwapVSync does
+//   that. It puts in the next side; AutoSwapFindSide corrects it, and if
+//   it can't tell, the next try gets to the right one.
+//
+// Some games (Famicom Mukashibanashi) also poll the drive all the time, to
+// note that the disk was out. So polling is counted by the address of the
+// code that does it. If the game doesn't read the disk after a swap, that
+// code isn't waiting for one, and is ignored until it stops polling. If the
+// game uses the disk while it is out, it goes back in at once.
+//
+BOOL	Mapper020::IsAutoSwap()
+{
+	return	Config.emulator.bAutoDiskSwap && nes->rom->GetDiskNo() > 1;
+}
+
+void	Mapper020::AutoSwapReset()
+{
+	::memset( swap_pollers, 0, sizeof(swap_pollers) );
+	swap_next_side = 0;
+	swap_eject_timer = 0;
+	swap_read_timer = 0;
+}
+
+void	Mapper020::AutoSwapInsert()
+{
+	DEBUGOUT( "FDS: auto insert side %d\n", swap_next_side );
+	AutoSwapSetSide( swap_next_side );
+	disk_eject = 0xFF;
+	drive_ready = 0;
+	disk_mount_count = 119;
+	swap_eject_timer = 0;
+	swap_read_timer = AUTOSWAP_READ_FRAMES;
+}
+
+void	Mapper020::AutoSwapPoll()
+{
+	if( !IsAutoSwap() )
+		return;
+
+	R6502	reg;
+	nes->cpu->GetContext( reg );
+
+	POLLER*	free = NULL;
+	for( INT i = 0; i < AUTOSWAP_POLLERS; i++ ) {
+		if( swap_pollers[i].pc == reg.PC ) {
+			swap_pollers[i].polled = 0xFF;
+			return;
+		}
+		if( !swap_pollers[i].pc )
+			free = &swap_pollers[i];
+	}
+	if( free ) {
+		::memset( free, 0, sizeof(POLLER) );
+		free->pc = reg.PC;
+		free->polled = 0xFF;
+	}
+}
+
+void	Mapper020::AutoSwapSetSide( BYTE side )
+{
+	disk = nes->rom->GetPROM()+sizeof(NESHEADER)+65500*side;
+	disk_w = nes->rom->GetDISK()+sizeof(NESHEADER)+65500*side;
+	disk_side = side;
+}
+
+void	Mapper020::AutoSwapFindSide()
+{
+	if( disk )
+		swap_started = 0xFF;
+	if( !IsAutoSwap() || !disk )
+		return;
+
+	// The game read the disk after a swap: that's what it was waiting
+	// for, and it may be for another if this isn't the right side.
+	for( INT i = 0; i < AUTOSWAP_POLLERS; i++ ) {
+		if( swap_pollers[i].state == POLLER_TRIED )
+			swap_pollers[i].state = POLLER_COUNTING;
+		swap_pollers[i].frames = 0;
+	}
+	swap_read_timer = 0;
+
+	// Only for CheckDiskHeader, as ($00) is something else in the other
+	// BIOS calls. It begins with a JSR $E6E3, which is where we are now:
+	// look for its return address on the stack.
+	LPBYTE	bios = nes->rom->GetDISKBIOS();
+	if( bios[0x0445] != 0x20 || bios[0x0446] != 0xE3 || bios[0x0447] != 0xE6 )
+		return;
+
+	R6502	reg;
+	nes->cpu->GetContext( reg );
+	BOOL	found = FALSE;
+	for( INT i = 1; i <= 16 && reg.S+i+1 <= 0xFF; i++ ) {
+		if( RAM[0x100+reg.S+i] == 0x47 && RAM[0x100+reg.S+i+1] == 0xE4 ) {
+			found = TRUE;
+			break;
+		}
+	}
+	if( !found )
+		return;
+
+	// The header the game wants
+	WORD	addr = RAM[0]|((WORD)RAM[1]<<8);
+	BYTE	want[10];
+	for( INT i = 0; i < 10; i++, addr++ ) {
+		if( addr < 0x2000 )
+			want[i] = RAM[addr&0x07FF];
+		else if( addr >= 0x6000 )
+			want[i] = CPU_MEM_BANK[addr>>13][addr&0x1FFF];
+		else
+			return;
+	}
+
+	// The side that is in comes first, so that it stays if it matches.
+	INT	sides = nes->rom->GetDiskNo();
+	for( INT n = 0; n < sides; n++ ) {
+		INT	side = (disk_side+n)%sides;
+		LPBYTE	header = nes->rom->GetPROM()+sizeof(NESHEADER)+65500*side+15;
+		INT	i;
+		for( i = 0; i < 10; i++ ) {
+			if( want[i] != 0xFF && want[i] != header[i] )
+				break;
+		}
+		if( i == 10 ) {
+			if( side != disk_side ) {
+				DEBUGOUT( "FDS: auto swap to side %d\n", side );
+				AutoSwapSetSide( side );
+			}
+			return;
+		}
+	}
+}
+
+void	Mapper020::AutoSwapVSync()
+{
+	// The disk was taken out: put the next side in. (Also if the setting
+	// was turned off meanwhile, or the drive would stay empty.)
+	if( swap_eject_timer > 0 ) {
+		if( --swap_eject_timer == 0 )
+			AutoSwapInsert();
+		return;
+	}
+
+	if( swap_read_timer > 0 && --swap_read_timer == 0 ) {
+		for( INT i = 0; i < AUTOSWAP_POLLERS; i++ ) {
+			if( swap_pollers[i].state == POLLER_TRIED ) {
+				DEBUGOUT( "FDS: ignoring polls at %04X\n", swap_pollers[i].pc );
+				swap_pollers[i].state = POLLER_IGNORED;
+			}
+		}
+	}
+
+	// (The BIOS's boot screen polls as well, before it reads the disk.)
+	if( !IsAutoSwap() || !swap_started || !disk || disk_eject || irq_transfer )
+		return;
+
+	for( INT i = 0; i < AUTOSWAP_POLLERS; i++ ) {
+		POLLER&	poller = swap_pollers[i];
+		if( !poller.pc )
+			continue;
+
+		if( !poller.polled ) {
+			if( ++poller.gap > AUTOSWAP_POLL_GAP )
+				poller.pc = 0;
+			continue;
+		}
+		poller.polled = 0;
+		poller.gap = 0;
+		poller.frames++;
+
+		if( poller.state == POLLER_COUNTING && poller.frames >= AUTOSWAP_POLL_FRAMES
+		 && swap_read_timer == 0 && swap_eject_timer == 0 ) {
+			DEBUGOUT( "FDS: auto eject side %d (polls at %04X)\n", disk_side, poller.pc );
+			poller.state = POLLER_TRIED;
+			swap_next_side = (disk_side+1)%nes->rom->GetDiskNo();
+			swap_eject_timer = AUTOSWAP_EJECT_FRAMES;
+
+			disk = NULL;
+			disk_w = NULL;
+			disk_side = 0xFF;
+			disk_eject = 0xFF;
+			drive_ready = 0;
+			disk_mount_count = 0;
+		}
+	}
+}
+
 BYTE	Mapper020::ExCmdRead( EXCMDRD cmd )
 {
 BYTE	data = 0x00;
@@ -473,6 +686,7 @@ void	Mapper020::ExCmdWrite( EXCMDWR cmd, BYTE data )
 		case	EXCMDWR_NONE:
 			break;
 		case	EXCMDWR_DISKINSERT:
+			AutoSwapReset();
 			disk = nes->rom->GetPROM()+16+65500*data;
 			disk_w = nes->rom->GetDISK()+16+65500*data;
 			disk_side = data;
@@ -481,6 +695,7 @@ void	Mapper020::ExCmdWrite( EXCMDWR cmd, BYTE data )
 			disk_mount_count = 0;
 			break;
 		case	EXCMDWR_DISKEJECT:
+			AutoSwapReset();
 			disk = NULL;	// ‚Æ‚è‚ ‚¦‚¸
 			disk_w = NULL;
 			disk_side = 0xFF;
@@ -588,6 +803,13 @@ void	Mapper020::LoadState( LPBYTE p )
 	sound_startup_flag = p[44];
 	sound_startup_timer = *(INT*)&p[48];
 	sound_seekend_timer = *(INT*)&p[52];
+
+	swap_started = 0xFF;
+	AutoSwapReset();
+	if( disk_side == 0xFF && IsAutoSwap() ) {
+		// The state may be from the middle of an automatic swap
+		swap_eject_timer = AUTOSWAP_EJECT_FRAMES;
+	}
 
 	if( disk_side != 0xFF ) {
 		disk = nes->rom->GetPROM()+sizeof(NESHEADER)+65500*disk_side;

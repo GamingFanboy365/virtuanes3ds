@@ -157,6 +157,7 @@ public:
 	BOOL	bLoadFullscreen;
 	BOOL	bPNGsnapshot;
 	BOOL	bAutoIPS;
+	BOOL	bAutoDiskSwap;
 
 	void	Default() {
 		bIllegalOp	= FALSE;
@@ -171,6 +172,7 @@ public:
 		bLoadFullscreen	= FALSE;
 		bPNGsnapshot	= FALSE;
 		bAutoIPS	= FALSE;
+		bAutoDiskSwap	= FALSE;
 	}
 };
 

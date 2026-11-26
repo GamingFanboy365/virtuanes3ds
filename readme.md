@@ -56,6 +56,8 @@ tools/azahar/gdb.sh
 
 `tools/azahar/stereotest.py` checks the Famicom 3D System support. Its test ROM flips OUT1 (`$4016` bit 1, which tells the shutter glasses which eye the next frame is for) every frame and draws the left eye's frames red and the right eye's blue. The script runs it with Azahar's side-by-side 3D mode, where the left half of the top screen shows the left eye. It checks that each eye gets its own colour with the 3D slider up, that the picture goes back to 2D when the ROM stops flipping OUT1, and that only the left eye shows with the slider down. `run.sh -c FILE` is how it passes Azahar those settings.
 
+`tools/azahar/fdsswaptest.py` checks the automatic FDS disk swap (`AutoSwapFindSide` and `AutoSwapVSync` in `MapperFDS.cpp`, whose comments explain it) with a made-up 4-sided disk and a made-up BIOS that is the test program, so it needs no Nintendo code.
+
 ### How the stereoscopic 3D works
 
 The design follows danielecuomo's [StereoScopeSystem](https://github.com/danielecuomo/StereoScopeSystem), a Master System emulator for the 3DS that shows SegaScope 3-D games in stereo the same way: it watches the glasses register alternate, keeps a picture per eye, and shows both with `gfxSet3D`. No code was copied; its emulator core and renderer are different.

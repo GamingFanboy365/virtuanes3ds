@@ -53,6 +53,7 @@
 #define SETTINGS_INSERTCOIN2        4
 #define SETTINGS_FAMICOM3D          5   // global: 0 = automatic stereoscopic 3D, 1 = off
 #define SETTINGS_FAMICOM3DSWAPEYES  6   // global: 1 = swap the left and right eyes
+#define SETTINGS_FDSAUTODISKSWAP    7   // global: 1 = swap FDS disk sides automatically
 
 //----------------------------------------------------------------------
 // Settings
@@ -158,6 +159,9 @@ SMenuItem optionMenu[] = {
     MENU_MAKE_CHECKBOX  (15001, "  Hide text in bottom screen", 0),
     MENU_MAKE_DISABLED  (""),
     MENU_MAKE_CHECKBOX  (21000, "  Automatically save state on exit and load state on start", 0),
+    MENU_MAKE_DISABLED  (""),
+    MENU_MAKE_HEADER1   ("FAMICOM DISK SYSTEM"),
+    MENU_MAKE_CHECKBOX  (17000, "  Swap disk sides automatically", 1),
     MENU_MAKE_DISABLED  (""),
     MENU_MAKE_HEADER1   ("FAMICOM 3D SYSTEM"),
     MENU_MAKE_PICKER    (16000, "  Stereoscopic 3D", "Games for the Famicom 3D System show a picture for each eye. Turn 3D on in the game (usually with SELECT) and raise the 3D slider.", optionsForFamicom3D, DIALOGCOLOR_CYAN),
@@ -1173,6 +1177,7 @@ void impl3dsInitializeDefaultSettingsGlobal()
 	settings3DS.OtherOptions[SETTINGS_GLOBALINSERTCOIN2] = 0;
 	settings3DS.OtherOptions[SETTINGS_FAMICOM3D] = 0;
 	settings3DS.OtherOptions[SETTINGS_FAMICOM3DSWAPEYES] = 0;
+	settings3DS.OtherOptions[SETTINGS_FDSAUTODISKSWAP] = 1;
 }
 
 //---------------------------------------------------------
@@ -1273,6 +1278,13 @@ bool impl3dsReadWriteSettingsGlobal(bool writeMode)
     
     int deprecated = 0;
 
+    // Defaults for settings that older files don't have.
+    if (!writeMode)
+    {
+        settings3DS.OtherOptions[SETTINGS_FAMICOM3D] = 0;       // automatic
+        settings3DS.OtherOptions[SETTINGS_FDSAUTODISKSWAP] = 1;
+    }
+
     config3dsReadWriteInt32("#v1\n", NULL, 0, 0);
     config3dsReadWriteInt32("# Do not modify this file or risk losing your settings.\n", NULL, 0, 0);
 
@@ -1320,6 +1332,7 @@ bool impl3dsReadWriteSettingsGlobal(bool writeMode)
     config3dsReadWriteInt32("ButtonMappingInsertCoin2=%d\n", &settings3DS.OtherOptions[SETTINGS_GLOBALINSERTCOIN2]);
     config3dsReadWriteInt32("Famicom3D=%d\n", &settings3DS.OtherOptions[SETTINGS_FAMICOM3D], 0, 1);
     config3dsReadWriteInt32("Famicom3DSwapEyes=%d\n", &settings3DS.OtherOptions[SETTINGS_FAMICOM3DSWAPEYES], 0, 1);
+    config3dsReadWriteInt32("FDSAutoSwap=%d\n", &settings3DS.OtherOptions[SETTINGS_FDSAUTODISKSWAP], 0, 1);
 
     // All new options should come here!
 
@@ -1383,6 +1396,8 @@ bool impl3dsApplyAllSettings(bool updateGameSettings)
     if (settings3DS.UseGlobalVolume)
         Config.sound.nVolume[0] = vol[settings3DS.GlobalVolume];
 
+    Config.emulator.bAutoDiskSwap = settings3DS.OtherOptions[SETTINGS_FDSAUTODISKSWAP];
+
     if (updateGameSettings)
     {
         if (settings3DS.ForceFrameRate == 0)
@@ -1435,6 +1450,7 @@ bool impl3dsCopyMenuToOrFromSettings(bool copyMenuToSettings)
     UPDATE_SETTINGS(settings3DS.AutoSavestate, -1, 21000);
     UPDATE_SETTINGS(settings3DS.OtherOptions[SETTINGS_FAMICOM3D], -1, 16000);
     UPDATE_SETTINGS(settings3DS.OtherOptions[SETTINGS_FAMICOM3DSWAPEYES], -1, 16001);
+    UPDATE_SETTINGS(settings3DS.OtherOptions[SETTINGS_FDSAUTODISKSWAP], -1, 17000);
 
     UPDATE_SETTINGS(settings3DS.UseGlobalEmuControlKeys, -1, 50003);
     if (settings3DS.UseGlobalButtonMappings || copyMenuToSettings)
